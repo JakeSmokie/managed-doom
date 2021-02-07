@@ -14,24 +14,26 @@
 //
 
 
-
 using System;
 using System.Collections.Generic;
 using System.Runtime.ExceptionServices;
 using ManagedDoom.SoftwareRendering;
-using ManagedDoom.Audio;
 using ManagedDoom.UserInput;
 using Microsoft.Xna.Framework;
+using MonoGame.Extended.Input.InputListeners;
 
 namespace ManagedDoom
 {
     public sealed class DoomApplication : Game, IDisposable
     {
+        private readonly KeyboardListener keyboardListener;
         private GraphicsDeviceManager graphics;
         private Config config;
 
         private CommonResource resource;
+
         private SfmlRenderer renderer;
+
         // private SfmlSound sound;
         // private SfmlMusic music;
         private SfmlUserInput userInput;
@@ -65,6 +67,10 @@ namespace ManagedDoom
 
         public DoomApplication(CommandLineArgs args)
         {
+            keyboardListener = new KeyboardListener();
+            keyboardListener.KeyPressed += KeyPressed;
+            keyboardListener.KeyReleased += KeyReleased;
+            
             graphics = new GraphicsDeviceManager(this);
             config = new Config(ConfigUtilities.GetConfigPath());
 
@@ -121,6 +127,7 @@ namespace ManagedDoom
                 {
                     cmds[i] = new TicCmd();
                 }
+
                 game = new DoomGame(resource, options);
 
                 wipe = new WipeEffect(renderer.WipeBandCount, renderer.WipeHeight);
@@ -136,10 +143,6 @@ namespace ManagedDoom
                 quitMessage = null;
 
                 CheckGameArgs(args);
-
-                // window.Closed += (sender, e) => window.Close();
-                // window.KeyPressed += KeyPressed;
-                // window.KeyReleased += KeyReleased;
 
                 if (!args.timedemo.Present)
                 {
@@ -159,8 +162,8 @@ namespace ManagedDoom
         {
             var wadPaths = new List<string>
             {
-                args.iwad.Present 
-                    ? args.iwad.Value 
+                args.iwad.Present
+                    ? args.iwad.Value
                     : ConfigUtilities.GetDefaultIwadPath()
             };
 
@@ -191,7 +194,7 @@ namespace ManagedDoom
 
             if (args.skill.Present)
             {
-                options.Skill = (GameSkill)(args.skill.Value - 1);
+                options.Skill = (GameSkill) (args.skill.Value - 1);
             }
 
             if (args.deathmatch.Present)
@@ -238,8 +241,19 @@ namespace ManagedDoom
             }
         }
 
+        protected override void Initialize()
+        {
+            graphics.PreferredBackBufferWidth = config.video_screenwidth;
+            graphics.PreferredBackBufferHeight = config.video_screenheight;
+            graphics.IsFullScreen = config.video_fullscreen;
+            graphics.ApplyChanges();
+
+            base.Initialize();
+        }
+
         protected override void Update(GameTime gameTime)
         {
+            keyboardListener.Update(gameTime);
             DoEvents();
             if (Update() == UpdateResult.Completed)
             {
@@ -358,6 +372,7 @@ namespace ManagedDoom
                     {
                         options.Sound.StartSound(Sfx.OOF);
                     }
+
                     return true;
 
                 case DoomKey.F8:
@@ -373,8 +388,10 @@ namespace ManagedDoom
                         {
                             msg = DoomInfo.Strings.MSGOFF;
                         }
+
                         game.World.ConsolePlayer.SendMessage(msg);
                     }
+
                     menu.StartSound(Sfx.SWTCHN);
                     return true;
 
@@ -393,6 +410,7 @@ namespace ManagedDoom
                     {
                         gcl = 0;
                     }
+
                     renderer.GammaCorrectionLevel = gcl;
                     if (currentState == ApplicationState.Game && game.State == GameState.Level)
                     {
@@ -405,8 +423,10 @@ namespace ManagedDoom
                         {
                             msg = "Gamma correction level " + gcl;
                         }
+
                         game.World.ConsolePlayer.SendMessage(msg);
                     }
+
                     return true;
 
                 case DoomKey.Add:
@@ -486,6 +506,7 @@ namespace ManagedDoom
                         {
                             StartWipe();
                         }
+
                         break;
 
                     case ApplicationState.DemoPlayback:
@@ -498,6 +519,7 @@ namespace ManagedDoom
                         {
                             Quit("FPS: " + demoPlayback.Fps.ToString("0.0"));
                         }
+
                         break;
 
                     case ApplicationState.Game:
@@ -505,12 +527,14 @@ namespace ManagedDoom
                         if (sendPause)
                         {
                             sendPause = false;
-                            cmds[options.ConsolePlayer].Buttons |= (byte)(TicCmdButtons.Special | TicCmdButtons.Pause);
+                            cmds[options.ConsolePlayer].Buttons |= (byte) (TicCmdButtons.Special | TicCmdButtons.Pause);
                         }
+
                         if (game.Update(cmds) == UpdateResult.NeedWipe)
                         {
                             StartWipe();
                         }
+
                         break;
 
                     default:
@@ -525,21 +549,21 @@ namespace ManagedDoom
             return UpdateResult.None;
         }
 
-        // private void KeyPressed(object sender, KeyEventArgs e)  // TODO: Handle this
-        // {
-        //     if (events.Count < 64)
-        //     {
-        //         events.Add(new DoomEvent(EventType.KeyDown, (DoomKey)e.Code));
-        //     }
-        // }
-        //
-        // private void KeyReleased(object sender, KeyEventArgs e)
-        // {
-        //     if (events.Count < 64)
-        //     {
-        //         events.Add(new DoomEvent(EventType.KeyUp, (DoomKey)e.Code));
-        //     }
-        // }
+        private void KeyPressed(object sender, KeyboardEventArgs e)
+        {
+            if (events.Count < 64)
+            {
+                events.Add(new DoomEvent(EventType.KeyDown, (DoomKey)e.Key));
+            }
+        }
+        
+        private void KeyReleased(object sender, KeyboardEventArgs e)
+        {
+            if (events.Count < 64)
+            {
+                events.Add(new DoomEvent(EventType.KeyUp, (DoomKey)e.Key));
+            }
+        }
 
         private void CheckMouseState()
         {
