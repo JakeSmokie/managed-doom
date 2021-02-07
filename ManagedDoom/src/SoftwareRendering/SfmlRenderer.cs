@@ -294,12 +294,6 @@ namespace ManagedDoom.SoftwareRendering
             graphics.GraphicsDevice.Clear(Color.CornflowerBlue);
             
             var screenData = screen.Data;
-            var red = 0;
-
-            for (int i = 0; i < textureData.Length; i++)
-            {
-                textureData[i] = Color.Aqua;
-            }
 
             for (var x = 0; x < screen.Width; x++)
             {
