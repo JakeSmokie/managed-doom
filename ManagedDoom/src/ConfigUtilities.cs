@@ -32,7 +32,7 @@ namespace ManagedDoom
 
         public static string GetConfigPath()
         {
-            return Path.Combine(GetExeDirectory(), "managed-doom.cfg");
+            return Path.Combine(Directory.GetCurrentDirectory(), "managed-doom.cfg");
         }
 
         public static VideoMode GetDefaultVideoMode()

@@ -16,6 +16,7 @@
 
 
 using System;
+using SFML.Window;
 
 namespace ManagedDoom
 {
@@ -253,11 +254,16 @@ namespace ManagedDoom
         public void MovePlayer(Player player)
         {
             var cmd = player.Cmd;
-
+            
             player.Mobj.Angle += new Angle(cmd.AngleTurn << 16);
 
             // Do not let the player control movement if not onground.
             onGround = (player.Mobj.Z <= player.Mobj.FloorZ);
+
+            if (Keyboard.IsKeyPressed(Keyboard.Key.E) && onGround)
+            {
+                player.Mobj.MomZ += Fixed.FromInt(10);
+            }
 
             if (cmd.ForwardMove != 0 && onGround)
             {
@@ -433,7 +439,7 @@ namespace ManagedDoom
                     break;
 
                 default:
-                    throw new Exception("Unknown sector special: " + (int)sector.Special);
+                    break;
             }
         }
 

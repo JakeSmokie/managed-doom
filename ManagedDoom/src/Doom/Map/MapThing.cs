@@ -22,6 +22,7 @@ namespace ManagedDoom
     public sealed class MapThing
     {
         private static readonly int dataSize = 10;
+        private static readonly int hexenDataSize = 20;
 
         public static MapThing Empty = new MapThing(
             Fixed.Zero,
@@ -68,6 +69,11 @@ namespace ManagedDoom
 
         public static MapThing[] FromWad(Wad wad, int lump)
         {
+            if (wad.GetLumpNumber("BEHAVIOR") != -1)
+            {
+                return FromWadHexen(wad, lump);
+            }
+
             var length = wad.GetLumpSize(lump);
             if (length % dataSize != 0)
             {
@@ -85,6 +91,38 @@ namespace ManagedDoom
             }
 
             return things;
+        }
+
+        private static MapThing[] FromWadHexen(Wad wad, int lump)
+        {
+            var length = wad.GetLumpSize(lump);
+            var data = new ReadOnlySpan<byte>(wad.ReadLump(lump));
+            var count = length / hexenDataSize;
+            var things = new MapThing[count];
+
+            for (var i = 0; i < count; i++)
+            {
+                var offset = hexenDataSize * i;
+                things[i] = FromDataHexen(data.Slice(offset, hexenDataSize));
+            }
+
+            return things;
+        }
+
+        private static MapThing FromDataHexen(ReadOnlySpan<byte> data)
+        {
+            var x = BitConverter.ToInt16(data.Slice(2));
+            var y = BitConverter.ToInt16(data.Slice(4));
+            var angle = BitConverter.ToInt16(data.Slice(8));
+            var type = BitConverter.ToInt16(data.Slice(10));
+            var flags = BitConverter.ToInt16(data.Slice(12));
+
+            return new MapThing(
+                Fixed.FromInt(x),
+                Fixed.FromInt(y),
+                new Angle(ManagedDoom.Angle.Ang45.Data * (uint)(angle / 45)),
+                type,
+                (ThingFlags)flags);
         }
 
         public Fixed X => x;

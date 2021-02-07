@@ -1216,7 +1216,7 @@ namespace ManagedDoom.SoftwareRendering
             var worldFrontZ2 = frontSector.FloorHeight - viewZ;
 
             // Check which parts must be rendered.
-            var drawWall = side.MiddleTexture != 0;
+            var drawWall = side.MiddleTexture > 0;
             var drawCeiling = worldFrontZ1 > Fixed.Zero || frontSector.CeilingFlat == flats.SkyFlatNumber;
             var drawFloor = worldFrontZ2 < Fixed.Zero;
 
@@ -1224,7 +1224,8 @@ namespace ManagedDoom.SoftwareRendering
             // Determine how the wall textures are vertically aligned.
             //
 
-            var wallTexture = textures[world.Specials.TextureTranslation[side.MiddleTexture]];
+            var index = side.MiddleTexture == -1 ? 0 : side.MiddleTexture;
+            var wallTexture = textures[world.Specials.TextureTranslation[index]];
             var wallWidthMask = wallTexture.Width - 1;
 
             Fixed middleTextureAlt;
@@ -1530,7 +1531,8 @@ namespace ManagedDoom.SoftwareRendering
             var lowerTextureAlt = default(Fixed);
             if (drawLowerWall)
             {
-                lowerWallTexture = textures[world.Specials.TextureTranslation[side.BottomTexture]];
+                var index = side.BottomTexture >= world.Specials.TextureTranslation.Length || side.BottomTexture < 0 ? 0 : side.BottomTexture;
+                lowerWallTexture = textures[world.Specials.TextureTranslation[index]];
                 lowerWallWidthMask = lowerWallTexture.Width - 1;
 
                 if ((line.Flags & LineFlags.DontPegBottom) != 0)

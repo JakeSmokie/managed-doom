@@ -129,7 +129,7 @@ namespace ManagedDoom
 
             if (i == DoomInfo.MobjInfos.Length)
             {
-                throw new Exception("Unknown type!");
+                return;
             }
 
             // Don't spawn keycards and players in deathmatch.
