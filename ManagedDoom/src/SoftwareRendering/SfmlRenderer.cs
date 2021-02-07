@@ -307,9 +307,12 @@ namespace ManagedDoom.SoftwareRendering
             var texture2D = new Texture2D(graphics.GraphicsDevice, screen.Width, screen.Height);
             texture2D.SetData(textureData);
 
+            var resolution = graphics.GraphicsDevice.PresentationParameters;
+            var scale = new Vector2((float) resolution.BackBufferWidth / screen.Width, (float) resolution.BackBufferHeight / screen.Height);
+
             var spriteBatch = new SpriteBatch(graphics.GraphicsDevice);
             spriteBatch.Begin();
-            spriteBatch.Draw(texture2D, Vector2.Zero, Color.White);
+            spriteBatch.Draw(texture2D, Vector2.Zero, null, Color.White, 0, Vector2.Zero, scale, SpriteEffects.None, 0f);
             spriteBatch.End();
         }
 
