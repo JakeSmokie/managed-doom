@@ -14,9 +14,7 @@
 //
 
 
-
-using System;
-using SFML.Window;
+using Microsoft.Xna.Framework.Input;
 
 namespace ManagedDoom
 {
@@ -260,17 +258,17 @@ namespace ManagedDoom
             // Do not let the player control movement if not onground.
             onGround = (player.Mobj.Z <= player.Mobj.FloorZ);
 
-            if (Keyboard.IsKeyPressed(Keyboard.Key.E) && onGround)
+            if (Keyboard.GetState().IsKeyDown(Keys.E) && onGround)
             {
-                player.Mobj.MomZ += Fixed.FromInt(10);
+                player.Mobj.MomZ += Fixed.FromInt(8);
             }
 
-            if (cmd.ForwardMove != 0 && onGround)
+            if (cmd.ForwardMove != 0)
             {
                 Thrust(player, player.Mobj.Angle, new Fixed(cmd.ForwardMove * 2048));
             }
 
-            if (cmd.SideMove != 0 && onGround)
+            if (cmd.SideMove != 0)
             {
                 Thrust(player, player.Mobj.Angle - Angle.Ang90, new Fixed(cmd.SideMove * 2048));
             }

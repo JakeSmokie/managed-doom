@@ -30,7 +30,7 @@ namespace ManagedDoom
 
             try
             {
-                string quitMessage = null;
+                string quitMessage;
 
                 using (var app = new DoomApplication(new CommandLineArgs(args)))
                 {

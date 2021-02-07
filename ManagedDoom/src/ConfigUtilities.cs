@@ -14,12 +14,9 @@
 //
 
 
-
 using System;
 using System.Diagnostics;
 using System.IO;
-using ManagedDoom.Audio;
-using SFML.Window;
 
 namespace ManagedDoom
 {
@@ -35,33 +32,33 @@ namespace ManagedDoom
             return Path.Combine(Directory.GetCurrentDirectory(), "managed-doom.cfg");
         }
 
-        public static VideoMode GetDefaultVideoMode()
-        {
-            var desktop = VideoMode.DesktopMode;
-
-            var baseWidth = 640;
-            var baseHeight = 400;
-
-            var currentWidth = baseWidth;
-            var currentHeight = baseHeight;
-
-            while (true)
-            {
-                var nextWidth = currentWidth + baseWidth;
-                var nextHeight = currentHeight + baseHeight;
-
-                if (nextWidth >= 0.9 * desktop.Width ||
-                    nextHeight >= 0.9 * desktop.Height)
-                {
-                    break;
-                }
-
-                currentWidth = nextWidth;
-                currentHeight = nextHeight;
-            }
-
-            return new VideoMode((uint)currentWidth, (uint)currentHeight);
-        }
+        // public static VideoMode GetDefaultVideoMode()  // TODO: Handle this
+        // {
+        //     var desktop = VideoMode.DesktopMode;
+        //
+        //     var baseWidth = 640;
+        //     var baseHeight = 400;
+        //
+        //     var currentWidth = baseWidth;
+        //     var currentHeight = baseHeight;
+        //
+        //     while (true)
+        //     {
+        //         var nextWidth = currentWidth + baseWidth;
+        //         var nextHeight = currentHeight + baseHeight;
+        //
+        //         if (nextWidth >= 0.9 * desktop.Width ||
+        //             nextHeight >= 0.9 * desktop.Height)
+        //         {
+        //             break;
+        //         }
+        //
+        //         currentWidth = nextWidth;
+        //         currentHeight = nextHeight;
+        //     }
+        //
+        //     return new VideoMode((uint)currentWidth, (uint)currentHeight);
+        // }
 
         public static string GetDefaultIwadPath()
         {
@@ -99,17 +96,17 @@ namespace ManagedDoom
             throw new Exception("No IWAD was found!");
         }
 
-        public static SfmlMusic GetSfmlMusicInstance(Config config, Wad wad)
-        {
-            var sfPath = Path.Combine(GetExeDirectory(), "TimGM6mb.sf2");
-            if (File.Exists(sfPath))
-            {
-                return new SfmlMusic(config, wad, sfPath);
-            }
-            else
-            {
-                return null;
-            }
-        }
+        // public static SfmlMusic GetSfmlMusicInstance(Config config, Wad wad)  // TODO: Handle this 
+        // {
+        //     var sfPath = Path.Combine(GetExeDirectory(), "TimGM6mb.sf2");
+        //     if (File.Exists(sfPath))
+        //     {
+        //         return new SfmlMusic(config, wad, sfPath);
+        //     }
+        //     else
+        //     {
+        //         return null;
+        //     }
+        // }
     }
 }

@@ -18,24 +18,22 @@
 using System;
 using System.Collections.Generic;
 using System.Runtime.ExceptionServices;
-using SFML.Graphics;
-using SFML.Window;
 using ManagedDoom.SoftwareRendering;
 using ManagedDoom.Audio;
 using ManagedDoom.UserInput;
+using Microsoft.Xna.Framework;
 
 namespace ManagedDoom
 {
-    public sealed class DoomApplication : IDisposable
+    public sealed class DoomApplication : Game, IDisposable
     {
+        private GraphicsDeviceManager graphics;
         private Config config;
-
-        private RenderWindow window;
 
         private CommonResource resource;
         private SfmlRenderer renderer;
-        private SfmlSound sound;
-        private SfmlMusic music;
+        // private SfmlSound sound;
+        // private SfmlMusic music;
         private SfmlUserInput userInput;
 
         private List<DoomEvent> events;
@@ -67,21 +65,18 @@ namespace ManagedDoom
 
         public DoomApplication(CommandLineArgs args)
         {
+            graphics = new GraphicsDeviceManager(this);
             config = new Config(ConfigUtilities.GetConfigPath());
 
             try
             {
                 config.video_screenwidth = Math.Clamp(config.video_screenwidth, 320, 3200);
                 config.video_screenheight = Math.Clamp(config.video_screenheight, 200, 2000);
-                var videoMode = new VideoMode((uint)config.video_screenwidth, (uint)config.video_screenheight);
-                var style = Styles.Close | Styles.Titlebar;
-                if (config.video_fullscreen)
-                {
-                    style = Styles.Fullscreen;
-                }
-                window = new RenderWindow(videoMode, ApplicationInfo.Title, style);
-                window.Clear(new Color(64, 64, 64));
-                window.Display();
+
+                graphics.PreferredBackBufferWidth = config.video_screenwidth;
+                graphics.PreferredBackBufferHeight = config.video_screenheight;
+                graphics.IsFullScreen = config.video_fullscreen;
+                graphics.ApplyChanges();
 
                 if (args.deh.Present)
                 {
@@ -90,30 +85,32 @@ namespace ManagedDoom
 
                 resource = new CommonResource(GetWadPaths(args), !args.nodeh.Present);
 
-                renderer = new SfmlRenderer(config, window, resource);
+                renderer = new SfmlRenderer(config, graphics, resource);
 
                 if (!args.nosound.Present && !args.nosfx.Present)
                 {
-                    sound = new SfmlSound(config, resource.Wad);
+                    // sound = new SfmlSound(config, resource.Wad);
                 }
 
                 if (!args.nosound.Present && !args.nomusic.Present)
                 {
-                    music = ConfigUtilities.GetSfmlMusicInstance(config, resource.Wad);
+                    // music = ConfigUtilities.GetSfmlMusicInstance(config, resource.Wad);
                 }
 
-                userInput = new SfmlUserInput(config, window, !args.nomouse.Present);
+                userInput = new SfmlUserInput(config, graphics, !args.nomouse.Present);
 
                 events = new List<DoomEvent>();
 
-                options = new GameOptions();
-                options.GameVersion = resource.Wad.GameVersion;
-                options.GameMode = resource.Wad.GameMode;
-                options.MissionPack = resource.Wad.MissionPack;
-                options.Renderer = renderer;
-                options.Sound = sound;
-                options.Music = music;
-                options.UserInput = userInput;
+                options = new GameOptions
+                {
+                    GameVersion = resource.Wad.GameVersion,
+                    GameMode = resource.Wad.GameMode,
+                    MissionPack = resource.Wad.MissionPack,
+                    Renderer = renderer,
+                    Sound = null,
+                    Music = null,
+                    UserInput = userInput
+                };
 
                 menu = new DoomMenu(this);
 
@@ -140,13 +137,13 @@ namespace ManagedDoom
 
                 CheckGameArgs(args);
 
-                window.Closed += (sender, e) => window.Close();
-                window.KeyPressed += KeyPressed;
-                window.KeyReleased += KeyReleased;
+                // window.Closed += (sender, e) => window.Close();
+                // window.KeyPressed += KeyPressed;
+                // window.KeyReleased += KeyReleased;
 
                 if (!args.timedemo.Present)
                 {
-                    window.SetFramerateLimit(35);
+                    // window.SetFramerateLimit(35);
                 }
 
                 mouseGrabbed = false;
@@ -158,25 +155,18 @@ namespace ManagedDoom
             }
         }
 
-        private string[] GetWadPaths(CommandLineArgs args)
+        private static string[] GetWadPaths(CommandLineArgs args)
         {
-            var wadPaths = new List<string>();
-
-            if (args.iwad.Present)
+            var wadPaths = new List<string>
             {
-                wadPaths.Add(args.iwad.Value);
-            }
-            else
-            {
-                wadPaths.Add(ConfigUtilities.GetDefaultIwadPath());
-            }
+                args.iwad.Present 
+                    ? args.iwad.Value 
+                    : ConfigUtilities.GetDefaultIwadPath()
+            };
 
             if (args.file.Present)
             {
-                foreach (var path in args.file.Value)
-                {
-                    wadPaths.Add(path);
-                }
+                wadPaths.AddRange(args.file.Value);
             }
 
             return wadPaths.ToArray();
@@ -248,19 +238,36 @@ namespace ManagedDoom
             }
         }
 
-        public void Run()
+        protected override void Update(GameTime gameTime)
         {
-            while (window.IsOpen)
+            DoEvents();
+            if (Update() == UpdateResult.Completed)
             {
-                window.DispatchEvents();
-                DoEvents();
-                if (Update() == UpdateResult.Completed)
-                {
-                    break;
-                }
+                config.Save(ConfigUtilities.GetConfigPath());
+                Exit();
+                return;
             }
 
-            config.Save(ConfigUtilities.GetConfigPath());
+            base.Update(gameTime);
+        }
+
+        protected override void Draw(GameTime gameTime)
+        {
+            if (wiping)
+            {
+                var result = wipe.Update();
+                renderer.RenderWipe(this, wipe);
+                if (result == UpdateResult.Completed)
+                {
+                    wiping = false;
+                }
+            }
+            else
+            {
+                renderer.Render(this);
+            }
+
+            base.Draw(gameTime);
         }
 
         public void NewGame(GameSkill skill, int episode, int map)
@@ -511,20 +518,6 @@ namespace ManagedDoom
                 }
             }
 
-            if (wiping)
-            {
-                var result = wipe.Update();
-                renderer.RenderWipe(this, wipe);
-                if (result == UpdateResult.Completed)
-                {
-                    wiping = false;
-                }
-            }
-            else
-            {
-                renderer.Render(this);
-            }
-
             options.Sound.Update();
 
             CheckMouseState();
@@ -532,54 +525,54 @@ namespace ManagedDoom
             return UpdateResult.None;
         }
 
-        private void KeyPressed(object sender, KeyEventArgs e)
-        {
-            if (events.Count < 64)
-            {
-                events.Add(new DoomEvent(EventType.KeyDown, (DoomKey)e.Code));
-            }
-        }
-
-        private void KeyReleased(object sender, KeyEventArgs e)
-        {
-            if (events.Count < 64)
-            {
-                events.Add(new DoomEvent(EventType.KeyUp, (DoomKey)e.Code));
-            }
-        }
+        // private void KeyPressed(object sender, KeyEventArgs e)  // TODO: Handle this
+        // {
+        //     if (events.Count < 64)
+        //     {
+        //         events.Add(new DoomEvent(EventType.KeyDown, (DoomKey)e.Code));
+        //     }
+        // }
+        //
+        // private void KeyReleased(object sender, KeyEventArgs e)
+        // {
+        //     if (events.Count < 64)
+        //     {
+        //         events.Add(new DoomEvent(EventType.KeyUp, (DoomKey)e.Code));
+        //     }
+        // }
 
         private void CheckMouseState()
         {
-            bool mouseShouldBeGrabbed;
-            if (!window.HasFocus())
-            {
-                mouseShouldBeGrabbed = false;
-            }
-            else if (config.video_fullscreen)
-            {
-                mouseShouldBeGrabbed = true;
-            }
-            else
-            {
-                mouseShouldBeGrabbed = currentState == ApplicationState.Game && !menu.Active;
-            }
-
-            if (mouseGrabbed)
-            {
-                if (!mouseShouldBeGrabbed)
-                {
-                    userInput.ReleaseMouse();
-                    mouseGrabbed = false;
-                }
-            }
-            else
-            {
-                if (mouseShouldBeGrabbed)
-                {
-                    userInput.GrabMouse();
-                    mouseGrabbed = true;
-                }
-            }
+            // bool mouseShouldBeGrabbed;  // TODO: Handle this
+            // if (!window.HasFocus())
+            // {
+            //     mouseShouldBeGrabbed = false;
+            // }
+            // else if (config.video_fullscreen)
+            // {
+            //     mouseShouldBeGrabbed = true;
+            // }
+            // else
+            // {
+            //     mouseShouldBeGrabbed = currentState == ApplicationState.Game && !menu.Active;
+            // }
+            //
+            // if (mouseGrabbed)
+            // {
+            //     if (!mouseShouldBeGrabbed)
+            //     {
+            //         userInput.ReleaseMouse();
+            //         mouseGrabbed = false;
+            //     }
+            // }
+            // else
+            // {
+            //     if (mouseShouldBeGrabbed)
+            //     {
+            //         userInput.GrabMouse();
+            //         mouseGrabbed = true;
+            //     }
+            // }
         }
 
         private void StartWipe()
@@ -647,17 +640,17 @@ namespace ManagedDoom
                 userInput = null;
             }
 
-            if (music != null)
-            {
-                music.Dispose();
-                music = null;
-            }
-
-            if (sound != null)
-            {
-                sound.Dispose();
-                sound = null;
-            }
+            // if (music != null)  // TODO: Handle this
+            // {
+            //     music.Dispose();
+            //     music = null;
+            // }
+            //
+            // if (sound != null)
+            // {
+            //     sound.Dispose();
+            //     sound = null;
+            // }
 
             if (renderer != null)
             {
@@ -671,11 +664,11 @@ namespace ManagedDoom
                 resource = null;
             }
 
-            if (window != null)
-            {
-                window.Dispose();
-                window = null;
-            }
+            // if (window != null)  // TODO: Handle this
+            // {
+            //     window.Dispose();
+            //     window = null;
+            // }
         }
 
         public ApplicationState State => currentState;

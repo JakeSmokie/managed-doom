@@ -14,20 +14,17 @@
 //
 
 
-
 using System;
 using System.Runtime.ExceptionServices;
-using SFML.Graphics;
-using SFML.System;
-using SFML.Window;
+using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework.Input;
 
 namespace ManagedDoom.UserInput
 {
     public sealed class SfmlUserInput : IUserInput, IDisposable
     {
         private Config config;
-
-        private RenderWindow window;
+        private GraphicsDeviceManager graphics;
 
         private bool useMouse;
 
@@ -41,7 +38,7 @@ namespace ManagedDoom.UserInput
         private int mouseY;
         private bool cursorCentered;
 
-        public SfmlUserInput(Config config, RenderWindow window, bool useMouse)
+        public SfmlUserInput(Config config, GraphicsDeviceManager graphics, bool useMouse)
         {
             try
             {
@@ -51,7 +48,7 @@ namespace ManagedDoom.UserInput
 
                 config.mouse_sensitivity = Math.Max(config.mouse_sensitivity, 0);
 
-                this.window = window;
+                this.graphics = graphics;
 
                 this.useMouse = useMouse;
 
@@ -59,8 +56,8 @@ namespace ManagedDoom.UserInput
                 turnHeld = 0;
 
                 mouseGrabbed = false;
-                windowCenterX = (int)window.Size.X / 2;
-                windowCenterY = (int)window.Size.Y / 2;
+                windowCenterX = graphics.GraphicsDevice.PresentationParameters.BackBufferWidth / 2;
+                windowCenterY = graphics.GraphicsDevice.PresentationParameters.BackBufferHeight / 2;
                 mouseX = 0;
                 mouseY = 0;
                 cursorCentered = false;
@@ -77,24 +74,27 @@ namespace ManagedDoom.UserInput
 
         public void BuildTicCmd(TicCmd cmd)
         {
-            var keyForward = IsPressed(config.key_forward);
-            var keyBackward = IsPressed(config.key_backward);
-            var keyStrafeLeft = IsPressed(config.key_strafeleft);
-            var keyStrafeRight = IsPressed(config.key_straferight);
-            var keyTurnLeft = IsPressed(config.key_turnleft);
-            var keyTurnRight = IsPressed(config.key_turnright);
-            var keyFire = IsPressed(config.key_fire);
-            var keyUse = IsPressed(config.key_use);
-            var keyRun = IsPressed(config.key_run);
-            var keyStrafe = IsPressed(config.key_strafe);
+            var keyboardState = Keyboard.GetState();
+            var mouseState = Mouse.GetState();
 
-            weaponKeys[0] = Keyboard.IsKeyPressed(Keyboard.Key.Num1);
-            weaponKeys[1] = Keyboard.IsKeyPressed(Keyboard.Key.Num2);
-            weaponKeys[2] = Keyboard.IsKeyPressed(Keyboard.Key.Num3);
-            weaponKeys[3] = Keyboard.IsKeyPressed(Keyboard.Key.Num4);
-            weaponKeys[4] = Keyboard.IsKeyPressed(Keyboard.Key.Num5);
-            weaponKeys[5] = Keyboard.IsKeyPressed(Keyboard.Key.Num6);
-            weaponKeys[6] = Keyboard.IsKeyPressed(Keyboard.Key.Num7);
+            var keyForward = IsPressed(keyboardState, mouseState, config.key_forward);
+            var keyBackward = IsPressed(keyboardState, mouseState, config.key_backward);
+            var keyStrafeLeft = IsPressed(keyboardState, mouseState, config.key_strafeleft);
+            var keyStrafeRight = IsPressed(keyboardState, mouseState, config.key_straferight);
+            var keyTurnLeft = IsPressed(keyboardState, mouseState, config.key_turnleft);
+            var keyTurnRight = IsPressed(keyboardState, mouseState, config.key_turnright);
+            var keyFire = IsPressed(keyboardState, mouseState, config.key_fire);
+            var keyUse = IsPressed(keyboardState, mouseState, config.key_use);
+            var keyRun = IsPressed(keyboardState, mouseState, config.key_run);
+            var keyStrafe = IsPressed(keyboardState, mouseState, config.key_strafe);
+
+            weaponKeys[0] = keyboardState.IsKeyDown(Keys.D1);
+            weaponKeys[1] = keyboardState.IsKeyDown(Keys.D2);
+            weaponKeys[2] = keyboardState.IsKeyDown(Keys.D3);
+            weaponKeys[3] = keyboardState.IsKeyDown(Keys.D4);
+            weaponKeys[4] = keyboardState.IsKeyDown(Keys.D5);
+            weaponKeys[5] = keyboardState.IsKeyDown(Keys.D6);
+            weaponKeys[6] = keyboardState.IsKeyDown(Keys.D7);
 
             cmd.Clear();
 
@@ -133,6 +133,7 @@ namespace ManagedDoom.UserInput
                 {
                     side += PlayerBehavior.SideMove[speed];
                 }
+
                 if (keyTurnLeft)
                 {
                     side -= PlayerBehavior.SideMove[speed];
@@ -142,11 +143,12 @@ namespace ManagedDoom.UserInput
             {
                 if (keyTurnRight)
                 {
-                    cmd.AngleTurn -= (short)PlayerBehavior.AngleTurn[turnSpeed];
+                    cmd.AngleTurn -= (short) PlayerBehavior.AngleTurn[turnSpeed];
                 }
+
                 if (keyTurnLeft)
                 {
-                    cmd.AngleTurn += (short)PlayerBehavior.AngleTurn[turnSpeed];
+                    cmd.AngleTurn += (short) PlayerBehavior.AngleTurn[turnSpeed];
                 }
             }
 
@@ -154,6 +156,7 @@ namespace ManagedDoom.UserInput
             {
                 forward += PlayerBehavior.ForwardMove[speed];
             }
+
             if (keyBackward)
             {
                 forward -= PlayerBehavior.ForwardMove[speed];
@@ -163,6 +166,7 @@ namespace ManagedDoom.UserInput
             {
                 side -= PlayerBehavior.SideMove[speed];
             }
+
             if (keyStrafeRight)
             {
                 side += PlayerBehavior.SideMove[speed];
@@ -184,15 +188,15 @@ namespace ManagedDoom.UserInput
                 if (weaponKeys[i])
                 {
                     cmd.Buttons |= TicCmdButtons.Change;
-                    cmd.Buttons |= (byte)(i << TicCmdButtons.WeaponShift);
+                    cmd.Buttons |= (byte) (i << TicCmdButtons.WeaponShift);
                     break;
                 }
             }
 
             UpdateMouse();
             var ms = 0.5F * config.mouse_sensitivity;
-            var mx = (int)MathF.Round(ms * mouseX);
-            var my = (int)MathF.Round(ms * mouseY);
+            var mx = (int) MathF.Round(ms * mouseX);
+            var my = (int) MathF.Round(ms * mouseY);
             forward += my;
             if (strafe)
             {
@@ -200,7 +204,7 @@ namespace ManagedDoom.UserInput
             }
             else
             {
-                cmd.AngleTurn -= (short)(mx * 0x8);
+                cmd.AngleTurn -= (short) (mx * 0x8);
             }
 
             if (forward > PlayerBehavior.MaxMove)
@@ -211,6 +215,7 @@ namespace ManagedDoom.UserInput
             {
                 forward = -PlayerBehavior.MaxMove;
             }
+
             if (side > PlayerBehavior.MaxMove)
             {
                 side = PlayerBehavior.MaxMove;
@@ -220,15 +225,15 @@ namespace ManagedDoom.UserInput
                 side = -PlayerBehavior.MaxMove;
             }
 
-            cmd.ForwardMove += (sbyte)forward;
-            cmd.SideMove += (sbyte)side;
+            cmd.ForwardMove += (sbyte) forward;
+            cmd.SideMove += (sbyte) side;
         }
 
-        private bool IsPressed(KeyBinding keyBinding)
+        private bool IsPressed(KeyboardState keyboardState, MouseState mouseState, KeyBinding keyBinding)
         {
             foreach (var key in keyBinding.Keys)
             {
-                if (Keyboard.IsKeyPressed((Keyboard.Key)key))
+                if (keyboardState.IsKeyDown((Keys) key))
                 {
                     return true;
                 }
@@ -238,9 +243,22 @@ namespace ManagedDoom.UserInput
             {
                 foreach (var mouseButton in keyBinding.MouseButtons)
                 {
-                    if (Mouse.IsButtonPressed((Mouse.Button)mouseButton))
+                    switch (mouseButton)
                     {
-                        return true;
+                        case DoomMouseButton.Unknown:
+                            break;
+                        case DoomMouseButton.Mouse1:
+                            return mouseState.LeftButton == ButtonState.Pressed;
+                        case DoomMouseButton.Mouse2:
+                            return mouseState.RightButton == ButtonState.Pressed;
+                        case DoomMouseButton.Mouse3:
+                            return mouseState.MiddleButton == ButtonState.Pressed;
+                        case DoomMouseButton.Mouse4:
+                            return mouseState.XButton1 == ButtonState.Pressed;
+                        case DoomMouseButton.Mouse5:
+                            return mouseState.XButton2 == ButtonState.Pressed;
+                        // case DoomMouseButton.Count: // TODO: Handle this
+                        //     return mouseState.RightButton == ButtonState.Pressed;
                     }
                 }
             }
@@ -259,8 +277,8 @@ namespace ManagedDoom.UserInput
         {
             if (useMouse && !mouseGrabbed)
             {
-                window.SetMouseCursorGrabbed(true);
-                window.SetMouseCursorVisible(false);
+                // graphics.SetMouseCursorGrabbed(true); // TODO: Handle this
+                // graphics.SetMouseCursorVisible(false);
                 mouseGrabbed = true;
                 mouseX = 0;
                 mouseY = 0;
@@ -272,11 +290,11 @@ namespace ManagedDoom.UserInput
         {
             if (useMouse && mouseGrabbed)
             {
-                var posX = (int)(0.9 * window.Size.X);
-                var posY = (int)(0.9 * window.Size.Y);
-                Mouse.SetPosition(new Vector2i(posX, posY), window);
-                window.SetMouseCursorGrabbed(false);
-                window.SetMouseCursorVisible(true);
+                // var posX = (int) (0.9 * graphics.Size.X);  // TODO: Handle this
+                // var posY = (int) (0.9 * graphics.Size.Y);
+                // Mouse.SetPosition(new Vector2i(posX, posY), graphics);
+                // graphics.SetMouseCursorGrabbed(false);
+                // graphics.SetMouseCursorVisible(true);
                 mouseGrabbed = false;
             }
         }
@@ -287,18 +305,18 @@ namespace ManagedDoom.UserInput
             {
                 if (cursorCentered)
                 {
-                    var current = Mouse.GetPosition(window);
+                    // var current = Mouse.GetPosition(graphics);
 
-                    mouseX = current.X - windowCenterX;
+                    // mouseX = current.X - windowCenterX;
 
-                    if (config.mouse_disableyaxis)
-                    {
-                        mouseY = 0;
-                    }
-                    else
-                    {
-                        mouseY = -(current.Y - windowCenterY);
-                    }
+                    // if (config.mouse_disableyaxis)
+                    // {
+                        // mouseY = 0;
+                    // }
+                    // else
+                    // {
+                        // mouseY = -(current.Y - windowCenterY);
+                    // }  // TODO: Handle this
                 }
                 else
                 {
@@ -306,9 +324,9 @@ namespace ManagedDoom.UserInput
                     mouseY = 0;
                 }
 
-                Mouse.SetPosition(new Vector2i(windowCenterX, windowCenterY), window);
-                var pos = Mouse.GetPosition(window);
-                cursorCentered = (pos.X == windowCenterX && pos.Y == windowCenterY);
+                // Mouse.SetPosition(new Vector2i(windowCenterX, windowCenterY), graphics);  // TODO: Handle this
+                // var pos = Mouse.GetPosition(graphics);
+                // cursorCentered = (pos.X == windowCenterX && pos.Y == windowCenterY);
             }
             else
             {
@@ -326,23 +344,14 @@ namespace ManagedDoom.UserInput
 
         public int MaxMouseSensitivity
         {
-            get
-            {
-                return 15;
-            }
+            get { return 15; }
         }
 
         public int MouseSensitivity
         {
-            get
-            {
-                return config.mouse_sensitivity;
-            }
+            get { return config.mouse_sensitivity; }
 
-            set
-            {
-                config.mouse_sensitivity = value;
-            }
+            set { config.mouse_sensitivity = value; }
         }
     }
 }
