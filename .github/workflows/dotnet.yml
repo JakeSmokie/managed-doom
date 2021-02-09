@@ -2,9 +2,9 @@ name: DevBuilds
 
 on:
   push:
-    branches: [ draftt ]
+    branches: [ master, draftt ]
   pull_request:
-    branches: [ draftt ]
+    branches: [ master, draftt ]
 
 jobs:
   build-linux:
