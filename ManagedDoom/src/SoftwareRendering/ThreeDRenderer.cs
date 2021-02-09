@@ -17,6 +17,8 @@
 
 using System;
 using System.Collections.Generic;
+using ManagedDoom.HardwareRendering;
+using Microsoft.Xna.Framework;
 
 namespace ManagedDoom.SoftwareRendering
 {
@@ -34,11 +36,14 @@ namespace ManagedDoom.SoftwareRendering
         private int screenHeight;
         private byte[] screenData;
         private int drawScale;
+        private MonoRenderer monoRenderer;
 
         private int windowSize;
 
-        public ThreeDRenderer(CommonResource resource, DrawScreen screen, int windowSize)
+        public ThreeDRenderer(GraphicsDeviceManager graphicsDeviceManager, CommonResource resource, DrawScreen screen, int windowSize)
         {
+            monoRenderer = new MonoRenderer(graphicsDeviceManager, this);
+
             colorMap = resource.ColorMap;
             textures = resource.Textures;
             flats = resource.Flats;
@@ -706,9 +711,15 @@ namespace ManagedDoom.SoftwareRendering
         private int validCount;
 
 
+        public void RenderMono()
+        {
+            monoRenderer.Render();
+        }
 
         public void Render(Player player)
         {
+            monoRenderer.SetProjection(player);
+            
             world = player.Mobj.World;
 
             viewX = player.Mobj.X;
@@ -802,6 +813,7 @@ namespace ManagedDoom.SoftwareRendering
             new[] { 2, 1, 3, 1 },
             new[] { 2, 1, 3, 0 }
         };
+
 
         private bool IsPotentiallyVisible(Fixed[] bbox)
         {
@@ -1913,6 +1925,7 @@ namespace ManagedDoom.SoftwareRendering
                 var drawSeg = visWallRanges[i];
                 if (drawSeg.MaskedTextureColumn != -1)
                 {
+                    monoRenderer.DrawMaskedRange(drawSeg);
                     DrawMaskedRange(drawSeg, drawSeg.X1, drawSeg.X2);
                 }
             }
@@ -1969,16 +1982,20 @@ namespace ManagedDoom.SoftwareRendering
                     var invScale = new Fixed((int)(0xffffffffu / (uint)scale.Data));
                     var ceilClip = clipData[drawSeg.UpperClip + x];
                     var floorClip = clipData[drawSeg.LowerClip + x];
-                    DrawMaskedColumn(
-                        wallTexture.Composite.Columns[col & mask],
-                        wallLights[index],
-                        x,
-                        topY,
-                        scale,
-                        invScale,
-                        midTextureAlt,
-                        ceilClip,
-                        floorClip);
+                    
+                    if (x % 2 == 0)
+                    {
+                        DrawMaskedColumn(
+                            wallTexture.Composite.Columns[col & mask],
+                            wallLights[index],
+                            x,
+                            topY,
+                            scale,
+                            invScale,
+                            midTextureAlt,
+                            ceilClip,
+                            floorClip);
+                    }
 
                     clipData[drawSeg.MaskedTextureColumn + x] = short.MaxValue;
                 }
@@ -2451,6 +2468,7 @@ namespace ManagedDoom.SoftwareRendering
             // Handle all things in sector.
             foreach (var thing in sector)
             {
+                monoRenderer.ProjectSprite(thing);
                 ProjectSprite(thing, spriteLights);
             }
         }
@@ -2966,7 +2984,7 @@ namespace ManagedDoom.SoftwareRendering
             }
         }
 
-        private class VisWallRange
+        public class VisWallRange
         {
             public Seg Seg;
 
@@ -2987,7 +3005,7 @@ namespace ManagedDoom.SoftwareRendering
         }
 
         [Flags]
-        private enum Silhouette
+        public enum Silhouette
         {
             Upper = 1,
             Lower = 2,

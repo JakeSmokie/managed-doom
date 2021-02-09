@@ -243,6 +243,7 @@ namespace ManagedDoom
 
         protected override void Initialize()
         {
+            TargetElapsedTime = TimeSpan.FromSeconds(1.0 / 35.0);
             graphics.PreferredBackBufferWidth = config.video_screenwidth;
             graphics.PreferredBackBufferHeight = config.video_screenheight;
             graphics.IsFullScreen = config.video_fullscreen;

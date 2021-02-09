@@ -258,7 +258,7 @@ namespace ManagedDoom
             // Do not let the player control movement if not onground.
             onGround = (player.Mobj.Z <= player.Mobj.FloorZ);
 
-            if (Keyboard.GetState().IsKeyDown(Keys.E) && onGround)
+            if (Keyboard.GetState().IsKeyDown(Keys.E))
             {
                 player.Mobj.MomZ += Fixed.FromInt(8);
             }

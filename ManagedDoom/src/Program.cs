@@ -16,6 +16,7 @@
 
 
 using System;
+using System.Runtime.InteropServices;
 
 namespace ManagedDoom
 {
@@ -23,6 +24,7 @@ namespace ManagedDoom
     {
         public static void Main(string[] args)
         {
+            Marshal.PrelinkAll(typeof(Program));
             Console.ForegroundColor = ConsoleColor.White;
             Console.BackgroundColor = ConsoleColor.DarkGreen;
             Console.WriteLine(ApplicationInfo.Title);

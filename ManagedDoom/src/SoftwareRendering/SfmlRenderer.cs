@@ -20,6 +20,7 @@ using System.Runtime.ExceptionServices;
 using System.Runtime.InteropServices;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
+using MonoGame.Extended;
 
 namespace ManagedDoom.SoftwareRendering
 {
@@ -118,7 +119,7 @@ namespace ManagedDoom.SoftwareRendering
                 // sfmlStates = new RenderStates(BlendMode.None);
 
                 menu = new MenuRenderer(resource.Wad, screen);
-                threeD = new ThreeDRenderer(resource, screen, config.video_gamescreensize);
+                threeD = new ThreeDRenderer(graphics, resource, screen, config.video_gamescreensize);
                 statusBar = new StatusBarRenderer(resource.Wad, screen);
                 intermission = new IntermissionRenderer(resource.Wad, screen);
                 openingSequence = new OpeningSequenceRenderer(resource.Wad, screen, this);
@@ -291,7 +292,7 @@ namespace ManagedDoom.SoftwareRendering
 
         private void Display(uint[] colors)
         {
-            graphics.GraphicsDevice.Clear(Color.CornflowerBlue);
+            graphics.GraphicsDevice.Clear(Color.Black);
             
             var screenData = screen.Data;
 
@@ -312,8 +313,11 @@ namespace ManagedDoom.SoftwareRendering
 
             var spriteBatch = new SpriteBatch(graphics.GraphicsDevice);
             spriteBatch.Begin();
+            // spriteBatch.FillRectangle(0, 0, resolution.BackBufferWidth, resolution.BackBufferHeight, Color.Aqua, 1);
             spriteBatch.Draw(texture2D, Vector2.Zero, null, Color.White, 0, Vector2.Zero, scale, SpriteEffects.None, 0f);
             spriteBatch.End();
+            
+            threeD.RenderMono();
         }
 
         private static int GetPaletteNumber(Player player)
