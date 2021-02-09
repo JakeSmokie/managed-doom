@@ -2,9 +2,9 @@ name: DevBuilds
 
 on:
   push:
-    branches: [ master ]
+    branches: [ draftt ]
   pull_request:
-    branches: [ master ]
+    branches: [ draftt ]
 
 jobs:
   build-linux:
@@ -19,8 +19,6 @@ jobs:
       run: dotnet restore
     - name: Build
       run: dotnet build --no-restore
-    - name: Test
-      run: dotnet test --no-build --verbosity normal
     - name: Upload artifacts
       uses: actions/upload-artifact@v2
       with:
@@ -38,8 +36,6 @@ jobs:
       run: dotnet restore
     - name: Build
       run: dotnet build --no-restore
-    - name: Test
-      run: dotnet test --no-build --verbosity normal
     - name: Upload artifacts
       uses: actions/upload-artifact@v2
       with:
