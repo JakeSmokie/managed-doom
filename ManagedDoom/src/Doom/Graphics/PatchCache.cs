@@ -14,8 +14,6 @@
 //
 
 
-
-using System;
 using System.Collections.Generic;
 
 namespace ManagedDoom
@@ -24,10 +22,12 @@ namespace ManagedDoom
     {
         private Wad wad;
         private Dictionary<string, Patch> cache;
+        private Palette palette;
 
-        public PatchCache(Wad wad)
+        public PatchCache(Wad wad, Palette palette)
         {
             this.wad = wad;
+            this.palette = palette;
 
             cache = new Dictionary<string, Patch>();
         }
@@ -36,12 +36,12 @@ namespace ManagedDoom
         {
             get
             {
-                Patch patch;
-                if (!cache.TryGetValue(name, out patch))
+                if (!cache.TryGetValue(name, out var patch))
                 {
-                    patch = Patch.FromWad(wad, name);
+                    patch = Patch.FromWad(wad, name, palette);
                     cache.Add(name, patch);
                 }
+
                 return patch;
             }
         }

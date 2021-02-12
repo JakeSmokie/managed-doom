@@ -49,6 +49,7 @@ namespace ManagedDoom
                     palettes[i] = new uint[256];
                 }
 
+                ResetColors(1);
                 Console.WriteLine("OK");
             }
             catch (Exception e)

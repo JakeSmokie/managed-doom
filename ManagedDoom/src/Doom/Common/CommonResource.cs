@@ -47,9 +47,9 @@ namespace ManagedDoom
 
                 palette = new Palette(wad);
                 colorMap = new ColorMap(wad);
-                textures = new TextureLookup(wad);
+                textures = new TextureLookup(wad, palette);
                 flats = new FlatLookup(wad);
-                sprites = new SpriteLookup(wad);
+                sprites = new SpriteLookup(wad, palette);
                 animation = new TextureAnimation(textures, flats);
             }
             catch (Exception e)
@@ -64,9 +64,9 @@ namespace ManagedDoom
             resource.wad = new Wad(wadPaths);
             resource.palette = new Palette(resource.wad);
             resource.colorMap = new ColorMap(resource.wad);
-            resource.textures = new TextureLookup(resource.wad, true);
+            resource.textures = new TextureLookup(resource.wad, true, resource.palette);
             resource.flats = new FlatLookup(resource.wad, true);
-            resource.sprites = new SpriteLookup(resource.wad, true);
+            resource.sprites = new SpriteLookup(resource.wad, true, resource.palette);
             resource.animation = new TextureAnimation(resource.textures, resource.flats);
             return resource;
         }

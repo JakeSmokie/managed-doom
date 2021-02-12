@@ -102,12 +102,12 @@ namespace ManagedDoom.SoftwareRendering
 
         private int scale;
 
-        public IntermissionRenderer(Wad wad, DrawScreen screen)
+        public IntermissionRenderer(Wad wad, DrawScreen screen, Palette palette)
         {
             this.wad = wad;
             this.screen = screen;
 
-            cache = new PatchCache(wad);
+            cache = new PatchCache(wad, palette);
 
             minus = Patch.FromWad(wad, "WIMINUS");
             numbers = new Patch[10];

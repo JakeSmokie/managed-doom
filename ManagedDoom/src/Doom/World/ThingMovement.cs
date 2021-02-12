@@ -233,6 +233,12 @@ namespace ManagedDoom
                     return false;
                 }
             }
+            
+            if ((line.Flags & LineFlags.BlockEverything) != 0)
+            {
+                // Explicitly blocking everything.
+                return false;
+            }
 
             // Set openrange, opentop, openbottom.
             mc.LineOpening(line);

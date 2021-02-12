@@ -34,17 +34,18 @@ namespace ManagedDoom
             bool masked,
             int width,
             int height,
-            TexturePatch[] patches)
+            TexturePatch[] patches, 
+            Palette palette)
         {
             this.name = name;
             this.masked = masked;
             this.width = width;
             this.height = height;
             this.patches = patches;
-            composite = GenerateComposite(name, width, height, patches);
+            composite = GenerateComposite(name, width, height, patches, palette);
         }
 
-        public static Texture FromData(byte[] data, int offset, Patch[] patchLookup)
+        public static Texture FromData(byte[] data, int offset, Patch[] patchLookup, Palette palette)
         {
             var name = DoomInterop.ToString(data, offset, 8);
             var masked = BitConverter.ToInt32(data, offset + 8);
@@ -63,7 +64,8 @@ namespace ManagedDoom
                 masked != 0,
                 width,
                 height,
-                patches);
+                patches,
+                palette);
         }
 
         public static string GetName(byte[] data, int offset)
@@ -76,7 +78,7 @@ namespace ManagedDoom
             return BitConverter.ToInt16(data, offset + 14);
         }
 
-        private static Patch GenerateComposite(string name, int width, int height, TexturePatch[] patches)
+        private static Patch GenerateComposite(string name, int width, int height, TexturePatch[] patches, Palette palette)
         {
             var patchCount = new int[width];
             var columns = new Column[width][];
@@ -137,7 +139,12 @@ namespace ManagedDoom
                 }
             }
 
-            return new Patch(name, width, height, 0, 0, columns);
+            if (palette != null)
+            {
+                return new Patch(name, width, height, 0, 0, columns, Patch.LoadTexture(palette, width, height, columns));
+            }
+            
+            return new Patch(name, width, height, 0, 0, columns, null);
         }
 
         private static void DrawColumnInCache(

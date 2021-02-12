@@ -118,13 +118,13 @@ namespace ManagedDoom.SoftwareRendering
                 //
                 // sfmlStates = new RenderStates(BlendMode.None);
 
-                menu = new MenuRenderer(resource.Wad, screen);
+                menu = new MenuRenderer(resource.Wad, screen, resource.Palette);
                 threeD = new ThreeDRenderer(graphics, resource, screen, config.video_gamescreensize);
                 statusBar = new StatusBarRenderer(resource.Wad, screen);
-                intermission = new IntermissionRenderer(resource.Wad, screen);
-                openingSequence = new OpeningSequenceRenderer(resource.Wad, screen, this);
+                intermission = new IntermissionRenderer(resource.Wad, screen, resource.Palette);
+                openingSequence = new OpeningSequenceRenderer(resource.Wad, screen, this, resource.Palette);
                 autoMap = new AutoMapRenderer(resource.Wad, screen);
-                finale = new FinaleRenderer(resource, screen);
+                finale = new FinaleRenderer(resource, screen, resource.Palette);
 
                 pause = Patch.FromWad(resource.Wad, "M_PAUSE");
 
@@ -231,6 +231,12 @@ namespace ManagedDoom.SoftwareRendering
 
         public void Render(DoomApplication app)
         {
+            var screenData = screen.Data;
+            for (var i = 0; i < screenData.Length; i++)
+            {
+                screenData[i] = 247;
+            }
+            
             RenderApplication(app);
             RenderMenu(app);
 
@@ -292,31 +298,33 @@ namespace ManagedDoom.SoftwareRendering
 
         private void Display(uint[] colors)
         {
-            graphics.GraphicsDevice.Clear(Color.Black);
-            
-            var screenData = screen.Data;
-
-            for (var x = 0; x < screen.Width; x++)
+            if (false)
             {
-                for (var y = 0; y < screen.Height; y++)
+                var screenData = screen.Data;
+                
+                for (var x = 0; x < screen.Width; x++)
                 {
-                    var color = new Color(colors[screenData[x * screen.Height + y]]);
-                    textureData[y * screen.Width + x] = color;
+                    for (var y = 0; y < screen.Height; y++)
+                    {
+                        var doomColor = screenData[x * screen.Height + y];
+                        textureData[y * screen.Width + x].PackedValue = doomColor == 247 ? 0 : colors[doomColor];
+                    }
                 }
+                
+                var texture2D = new Texture2D(graphics.GraphicsDevice, screen.Width, screen.Height);
+                texture2D.SetData(textureData);
+                
+                var resolution = graphics.GraphicsDevice.PresentationParameters;
+                var scale = new Vector2((float) resolution.BackBufferWidth / screen.Width, (float) resolution.BackBufferHeight / screen.Height);
+                
+                var spriteBatch = new SpriteBatch(graphics.GraphicsDevice);
+                spriteBatch.GraphicsDevice.BlendState = BlendState.NonPremultiplied;
+                spriteBatch.Begin();
+                spriteBatch.FillRectangle(0, 0, resolution.BackBufferWidth, resolution.BackBufferHeight, Color.Aqua, 1);
+                spriteBatch.Draw(texture2D, Vector2.Zero, null, Color.White, 0, Vector2.Zero, scale, SpriteEffects.None, 1f);
+                spriteBatch.End();
             }
 
-            var texture2D = new Texture2D(graphics.GraphicsDevice, screen.Width, screen.Height);
-            texture2D.SetData(textureData);
-
-            var resolution = graphics.GraphicsDevice.PresentationParameters;
-            var scale = new Vector2((float) resolution.BackBufferWidth / screen.Width, (float) resolution.BackBufferHeight / screen.Height);
-
-            var spriteBatch = new SpriteBatch(graphics.GraphicsDevice);
-            spriteBatch.Begin();
-            // spriteBatch.FillRectangle(0, 0, resolution.BackBufferWidth, resolution.BackBufferHeight, Color.Aqua, 1);
-            spriteBatch.Draw(texture2D, Vector2.Zero, null, Color.White, 0, Vector2.Zero, scale, SpriteEffects.None, 0f);
-            spriteBatch.End();
-            
             threeD.RenderMono();
         }
 

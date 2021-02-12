@@ -26,12 +26,12 @@ namespace ManagedDoom.SoftwareRendering
 
         private PatchCache cache;
 
-        public OpeningSequenceRenderer(Wad wad, DrawScreen screen, SfmlRenderer parent)
+        public OpeningSequenceRenderer(Wad wad, DrawScreen screen, SfmlRenderer parent, Palette palette)
         {
             this.screen = screen;
             this.parent = parent;
 
-            cache = new PatchCache(wad);
+            cache = new PatchCache(wad, palette);
         }
 
         public void Render(OpeningSequence sequence)

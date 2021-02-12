@@ -20,13 +20,15 @@ using System.Runtime.ExceptionServices;
 using ManagedDoom.SoftwareRendering;
 using ManagedDoom.UserInput;
 using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework.Graphics;
 using MonoGame.Extended.Input.InputListeners;
 
 namespace ManagedDoom
 {
     public sealed class DoomApplication : Game, IDisposable
     {
-        private readonly KeyboardListener keyboardListener;
+        private readonly CommandLineArgs args;
+        private KeyboardListener keyboardListener;
         private GraphicsDeviceManager graphics;
         private Config config;
 
@@ -67,95 +69,10 @@ namespace ManagedDoom
 
         public DoomApplication(CommandLineArgs args)
         {
-            keyboardListener = new KeyboardListener();
-            keyboardListener.KeyPressed += KeyPressed;
-            keyboardListener.KeyReleased += KeyReleased;
-            
-            graphics = new GraphicsDeviceManager(this);
+            this.args = args;
+            graphics = new GraphicsDeviceManager(this) { PreferredDepthStencilFormat = DepthFormat.Depth24Stencil8 };
+
             config = new Config(ConfigUtilities.GetConfigPath());
-
-            try
-            {
-                config.video_screenwidth = Math.Clamp(config.video_screenwidth, 320, 3200);
-                config.video_screenheight = Math.Clamp(config.video_screenheight, 200, 2000);
-
-                graphics.PreferredBackBufferWidth = config.video_screenwidth;
-                graphics.PreferredBackBufferHeight = config.video_screenheight;
-                graphics.IsFullScreen = config.video_fullscreen;
-                graphics.ApplyChanges();
-
-                if (args.deh.Present)
-                {
-                    DeHackEd.ReadFiles(args.deh.Value);
-                }
-
-                resource = new CommonResource(GetWadPaths(args), !args.nodeh.Present);
-
-                renderer = new SfmlRenderer(config, graphics, resource);
-
-                if (!args.nosound.Present && !args.nosfx.Present)
-                {
-                    // sound = new SfmlSound(config, resource.Wad);
-                }
-
-                if (!args.nosound.Present && !args.nomusic.Present)
-                {
-                    // music = ConfigUtilities.GetSfmlMusicInstance(config, resource.Wad);
-                }
-
-                userInput = new SfmlUserInput(config, graphics, !args.nomouse.Present);
-
-                events = new List<DoomEvent>();
-
-                options = new GameOptions
-                {
-                    GameVersion = resource.Wad.GameVersion,
-                    GameMode = resource.Wad.GameMode,
-                    MissionPack = resource.Wad.MissionPack,
-                    Renderer = renderer,
-                    Sound = null,
-                    Music = null,
-                    UserInput = userInput
-                };
-
-                menu = new DoomMenu(this);
-
-                opening = new OpeningSequence(resource, options);
-
-                cmds = new TicCmd[Player.MaxPlayerCount];
-                for (var i = 0; i < Player.MaxPlayerCount; i++)
-                {
-                    cmds[i] = new TicCmd();
-                }
-
-                game = new DoomGame(resource, options);
-
-                wipe = new WipeEffect(renderer.WipeBandCount, renderer.WipeHeight);
-                wiping = false;
-
-                currentState = ApplicationState.None;
-                nextState = ApplicationState.Opening;
-                needWipe = false;
-
-                sendPause = false;
-
-                quit = false;
-                quitMessage = null;
-
-                CheckGameArgs(args);
-
-                if (!args.timedemo.Present)
-                {
-                    // window.SetFramerateLimit(35);
-                }
-
-                mouseGrabbed = false;
-            }
-            catch (Exception e)
-            {
-                Dispose();
-                ExceptionDispatchInfo.Throw(e);
-            }
         }
 
         private static string[] GetWadPaths(CommandLineArgs args)
@@ -243,6 +160,12 @@ namespace ManagedDoom
 
         protected override void Initialize()
         {
+            StaticGraphicsDevice = graphics.GraphicsDevice;
+
+            keyboardListener = new KeyboardListener();
+            keyboardListener.KeyPressed += KeyPressed;
+            keyboardListener.KeyReleased += KeyReleased;
+
             TargetElapsedTime = TimeSpan.FromSeconds(1.0 / 35.0);
             graphics.PreferredBackBufferWidth = config.video_screenwidth;
             graphics.PreferredBackBufferHeight = config.video_screenheight;
@@ -251,6 +174,96 @@ namespace ManagedDoom
 
             base.Initialize();
         }
+
+        protected override void LoadContent()
+        {
+            try
+            {
+                config.video_screenwidth = Math.Clamp(config.video_screenwidth, 320, 3200);
+                config.video_screenheight = Math.Clamp(config.video_screenheight, 200, 2000);
+
+                graphics.PreferredBackBufferWidth = config.video_screenwidth;
+                graphics.PreferredBackBufferHeight = config.video_screenheight;
+                graphics.IsFullScreen = config.video_fullscreen;
+                graphics.ApplyChanges();
+
+                if (args.deh.Present)
+                {
+                    DeHackEd.ReadFiles(args.deh.Value);
+                }
+
+                resource = new CommonResource(GetWadPaths(args), !args.nodeh.Present);
+
+                renderer = new SfmlRenderer(config, graphics, resource);
+
+                if (!args.nosound.Present && !args.nosfx.Present)
+                {
+                    // sound = new SfmlSound(config, resource.Wad);
+                }
+
+                if (!args.nosound.Present && !args.nomusic.Present)
+                {
+                    // music = ConfigUtilities.GetSfmlMusicInstance(config, resource.Wad);
+                }
+
+                userInput = new SfmlUserInput(config, graphics, !args.nomouse.Present);
+
+                events = new List<DoomEvent>();
+
+                options = new GameOptions
+                {
+                    GameVersion = resource.Wad.GameVersion,
+                    GameMode = resource.Wad.GameMode,
+                    MissionPack = resource.Wad.MissionPack,
+                    Renderer = renderer,
+                    Sound = null,
+                    Music = null,
+                    UserInput = userInput
+                };
+
+                menu = new DoomMenu(this);
+
+                opening = new OpeningSequence(resource, options);
+
+                cmds = new TicCmd[Player.MaxPlayerCount];
+                for (var i = 0; i < Player.MaxPlayerCount; i++)
+                {
+                    cmds[i] = new TicCmd();
+                }
+
+                game = new DoomGame(resource, options);
+
+                wipe = new WipeEffect(renderer.WipeBandCount, renderer.WipeHeight);
+                wiping = false;
+
+                currentState = ApplicationState.None;
+                nextState = ApplicationState.Opening;
+                needWipe = false;
+
+                sendPause = false;
+
+                quit = false;
+                quitMessage = null;
+
+                CheckGameArgs(args);
+
+                if (!args.timedemo.Present)
+                {
+                    // window.SetFramerateLimit(35);
+                }
+
+                mouseGrabbed = false;
+            }
+            catch (Exception e)
+            {
+                Dispose();
+                ExceptionDispatchInfo.Throw(e);
+            }
+
+            base.LoadContent();
+        }
+
+        public static GraphicsDevice StaticGraphicsDevice { get; private set; }
 
         protected override void Update(GameTime gameTime)
         {
@@ -554,15 +567,15 @@ namespace ManagedDoom
         {
             if (events.Count < 64)
             {
-                events.Add(new DoomEvent(EventType.KeyDown, (DoomKey)e.Key));
+                events.Add(new DoomEvent(EventType.KeyDown, (DoomKey) e.Key));
             }
         }
-        
+
         private void KeyReleased(object sender, KeyboardEventArgs e)
         {
             if (events.Count < 64)
             {
-                events.Add(new DoomEvent(EventType.KeyUp, (DoomKey)e.Key));
+                events.Add(new DoomEvent(EventType.KeyUp, (DoomKey) e.Key));
             }
         }
 

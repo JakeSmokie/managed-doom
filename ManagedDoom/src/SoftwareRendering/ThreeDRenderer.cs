@@ -29,7 +29,7 @@ namespace ManagedDoom.SoftwareRendering
         private ColorMap colorMap;
         private TextureLookup textures;
         private FlatLookup flats;
-        private SpriteLookup sprites;
+        public SpriteLookup sprites;
 
         private DrawScreen screen;
         private int screenWidth;
@@ -42,7 +42,7 @@ namespace ManagedDoom.SoftwareRendering
 
         public ThreeDRenderer(GraphicsDeviceManager graphicsDeviceManager, CommonResource resource, DrawScreen screen, int windowSize)
         {
-            monoRenderer = new MonoRenderer(graphicsDeviceManager, this);
+            monoRenderer = new MonoRenderer(graphicsDeviceManager, this, resource);
 
             colorMap = resource.ColorMap;
             textures = resource.Textures;
@@ -698,7 +698,7 @@ namespace ManagedDoom.SoftwareRendering
         // Camera view
         ////////////////////////////////////////////////////////////
 
-        private World world;
+        public World World;
 
         private Fixed viewX;
         private Fixed viewY;
@@ -720,7 +720,7 @@ namespace ManagedDoom.SoftwareRendering
         {
             monoRenderer.SetProjection(player);
             
-            world = player.Mobj.World;
+            World = player.Mobj.World;
 
             viewX = player.Mobj.X;
             viewY = player.Mobj.Y;
@@ -730,7 +730,7 @@ namespace ManagedDoom.SoftwareRendering
             viewSin = Trig.Sin(viewAngle);
             viewCos = Trig.Cos(viewAngle);
 
-            validCount = world.GetNewValidCount();
+            validCount = World.GetNewValidCount();
 
             extraLight = player.ExtraLight;
             fixedColorMap = player.FixedColorMap;
@@ -740,7 +740,7 @@ namespace ManagedDoom.SoftwareRendering
             ClearRenderingHistory();
             ClearSpriteRendering();
 
-            RenderBspNode(world.Map.Nodes.Length - 1);
+            RenderBspNode(World.Map.Nodes.Length - 1);
             RenderSprites();
             RenderMaskedTextures();
             DrawPlayerSprites(player);
@@ -768,7 +768,7 @@ namespace ManagedDoom.SoftwareRendering
                 return;
             }
 
-            var bsp = world.Map.Nodes[node];
+            var bsp = World.Map.Nodes[node];
 
             // Decide which side the view point is on.
             var side = Geometry.PointOnSide(viewX, viewY, bsp);
@@ -787,13 +787,18 @@ namespace ManagedDoom.SoftwareRendering
 
         private void DrawSubsector(int subsector)
         {
-            var target = world.Map.Subsectors[subsector];
+            var target = World.Map.Subsectors[subsector];
 
             AddSprites(target.Sector, validCount);
 
+            if (subsector == 3401)
+            {
+                ;
+            }
+
             for (var i = 0; i < target.SegCount; i++)
             {
-                DrawSeg(world.Map.Segs[target.FirstSeg + i]);
+                DrawSeg(World.Map.Segs[target.FirstSeg + i]);
             }
         }
 
@@ -1034,6 +1039,8 @@ namespace ManagedDoom.SoftwareRendering
 
         private void DrawSolidWall(Seg seg, Angle rwAngle1, int x1, int x2)
         {
+            monoRenderer.DrawSolidWall(seg);
+            
             int next;
             int start;
 
@@ -1122,6 +1129,7 @@ namespace ManagedDoom.SoftwareRendering
 
         private void DrawPassWall(Seg seg, Angle rwAngle1, int x1, int x2)
         {
+            monoRenderer.DrawPassWall(seg);
             int start;
 
             // Find the first range that touches the range
@@ -1237,7 +1245,7 @@ namespace ManagedDoom.SoftwareRendering
             //
 
             var index = side.MiddleTexture == -1 ? 0 : side.MiddleTexture;
-            var wallTexture = textures[world.Specials.TextureTranslation[index]];
+            var wallTexture = textures[World.Specials.TextureTranslation[index]];
             var wallWidthMask = wallTexture.Width - 1;
 
             Fixed middleTextureAlt;
@@ -1371,8 +1379,8 @@ namespace ManagedDoom.SoftwareRendering
             // Floor and ceiling.
             //
 
-            var ceilingFlat = flats[world.Specials.FlatTranslation[frontSector.CeilingFlat]];
-            var floorFlat = flats[world.Specials.FlatTranslation[frontSector.FloorFlat]];
+            var ceilingFlat = flats[World.Specials.FlatTranslation[frontSector.CeilingFlat]];
+            var floorFlat = flats[World.Specials.FlatTranslation[frontSector.FloorFlat]];
 
             //
             // Now the rendering is carried out.
@@ -1523,7 +1531,7 @@ namespace ManagedDoom.SoftwareRendering
             var uperTextureAlt = default(Fixed);
             if (drawUpperWall)
             {
-                upperWallTexture = textures[world.Specials.TextureTranslation[side.TopTexture]];
+                upperWallTexture = textures[World.Specials.TextureTranslation[side.TopTexture]];
                 upperWallWidthMask = upperWallTexture.Width - 1;
 
                 if ((line.Flags & LineFlags.DontPegTop) != 0)
@@ -1543,8 +1551,8 @@ namespace ManagedDoom.SoftwareRendering
             var lowerTextureAlt = default(Fixed);
             if (drawLowerWall)
             {
-                var index = side.BottomTexture >= world.Specials.TextureTranslation.Length || side.BottomTexture < 0 ? 0 : side.BottomTexture;
-                lowerWallTexture = textures[world.Specials.TextureTranslation[index]];
+                var index = side.BottomTexture >= World.Specials.TextureTranslation.Length || side.BottomTexture < 0 ? 0 : side.BottomTexture;
+                lowerWallTexture = textures[World.Specials.TextureTranslation[index]];
                 lowerWallWidthMask = lowerWallTexture.Width - 1;
 
                 if ((line.Flags & LineFlags.DontPegBottom) != 0)
@@ -1765,8 +1773,8 @@ namespace ManagedDoom.SoftwareRendering
             // Floor and ceiling.
             //
 
-            var ceilingFlat = flats[world.Specials.FlatTranslation[frontSector.CeilingFlat]];
-            var floorFlat = flats[world.Specials.FlatTranslation[frontSector.FloorFlat]];
+            var ceilingFlat = flats[World.Specials.FlatTranslation[frontSector.CeilingFlat]];
+            var floorFlat = flats[World.Specials.FlatTranslation[frontSector.FloorFlat]];
 
             //
             // Now the rendering is carried out.
@@ -1925,7 +1933,6 @@ namespace ManagedDoom.SoftwareRendering
                 var drawSeg = visWallRanges[i];
                 if (drawSeg.MaskedTextureColumn != -1)
                 {
-                    monoRenderer.DrawMaskedRange(drawSeg);
                     DrawMaskedRange(drawSeg, drawSeg.X1, drawSeg.X2);
                 }
             }
@@ -1949,7 +1956,7 @@ namespace ManagedDoom.SoftwareRendering
 
             var wallLights = scaleLight[Math.Clamp(wallLightLevel, 0, lightLevelCount - 1)];
 
-            var wallTexture = textures[world.Specials.TextureTranslation[seg.SideDef.MiddleTexture]];
+            var wallTexture = textures[World.Specials.TextureTranslation[seg.SideDef.MiddleTexture]];
             var mask = wallTexture.Width - 1;
 
             Fixed midTextureAlt;
@@ -1983,7 +1990,7 @@ namespace ManagedDoom.SoftwareRendering
                     var ceilClip = clipData[drawSeg.UpperClip + x];
                     var floorClip = clipData[drawSeg.LowerClip + x];
                     
-                    if (x % 2 == 0)
+                    // if (x % 2 == 0)
                     {
                         DrawMaskedColumn(
                             wallTexture.Composite.Columns[col & mask],
@@ -2051,7 +2058,7 @@ namespace ManagedDoom.SoftwareRendering
 
                     var colorMap = planeLights[Math.Min((uint)(distance.Data >> zLightShift), maxZLight - 1)];
                     ceilingLights[y] = colorMap;
-
+ 
                     var spot = ((yFrac.Data >> (16 - 6)) & (63 * 64)) + ((xFrac.Data >> 16) & 63);
                     screenData[pos] = colorMap[flatData[spot]];
                     pos++;
@@ -2358,8 +2365,8 @@ namespace ManagedDoom.SoftwareRendering
         private void DrawSkyColumn(int x, int y1, int y2)
         {
             var angle = (viewAngle + xToAngle[x]).Data >> angleToSkyShift;
-            var mask = world.Map.SkyTexture.Width - 1;
-            var source = world.Map.SkyTexture.Composite.Columns[angle & mask];
+            var mask = World.Map.SkyTexture.Width - 1;
+            var source = World.Map.SkyTexture.Composite.Columns[angle & mask];
             DrawColumn(source[0], colorMap[0], x, y1, y2, skyInvScale, skyTextureAlt);
         }
 
@@ -2468,7 +2475,6 @@ namespace ManagedDoom.SoftwareRendering
             // Handle all things in sector.
             foreach (var thing in sector)
             {
-                monoRenderer.ProjectSprite(thing);
                 ProjectSprite(thing, spriteLights);
             }
         }
@@ -2552,6 +2558,7 @@ namespace ManagedDoom.SoftwareRendering
             var vis = visSprites[visSpriteCount];
             visSpriteCount++;
 
+            vis.Thing = thing;
             vis.MobjFlags = thing.Flags;
             vis.Scale = xScale;
             vis.GlobalX = thing.X;
@@ -2561,6 +2568,7 @@ namespace ManagedDoom.SoftwareRendering
             vis.TextureAlt = vis.GlobalTopZ - viewZ;
             vis.X1 = x1 < 0 ? 0 : x1;
             vis.X2 = x2 >= windowWidth ? windowWidth - 1 : x2;
+            vis.Flip = flip;
 
             var invScale = Fixed.One / xScale;
 
@@ -2605,6 +2613,7 @@ namespace ManagedDoom.SoftwareRendering
 
             for (var i = visSpriteCount - 1; i >= 0; i--)
             {
+                monoRenderer.DrawSprite(visSprites[i]);
                 DrawSprite(visSprites[i]);
             }
         }
@@ -3012,7 +3021,7 @@ namespace ManagedDoom.SoftwareRendering
             Both = 3
         }
 
-        private class VisSprite
+        public class VisSprite
         {
             public int X1;
             public int X2;
@@ -3040,6 +3049,8 @@ namespace ManagedDoom.SoftwareRendering
             public byte[] ColorMap;
 
             public MobjFlags MobjFlags;
+            public Mobj Thing;
+            public bool Flip;
         }
 
         private class VisSpriteComparer : IComparer<VisSprite>

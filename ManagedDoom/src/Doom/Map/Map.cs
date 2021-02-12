@@ -14,10 +14,15 @@
 //
 
 
-
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Runtime.ExceptionServices;
+using ManagedDoom.Extensions;
+using Microsoft.Xna.Framework;
+using MonoGame.Extended;
+using MonoGame.Extended.Collections;
+using MonoGame.Extended.Shapes;
 
 namespace ManagedDoom
 {
@@ -90,6 +95,7 @@ namespace ManagedDoom
                 blockMap = BlockMap.FromWad(wad, map + 10, lines);
                 reject = Reject.FromWad(wad, map + 9, sectors);
 
+                SetupSubsectorShapes(new List<int>(), nodes.Length - 1);
                 GroupLines();
 
                 skyTexture = GetSkyTextureByMapName(name);
@@ -121,6 +127,88 @@ namespace ManagedDoom
                 Console.WriteLine("Failed");
                 ExceptionDispatchInfo.Throw(e);
             }
+        }
+
+        private void SetupSubsectorShapes(List<int> nodesStack, int nodeIndex)
+        {
+            if (Node.IsSubsector(nodeIndex))
+            {
+                SetupSubsectorShape(nodesStack, nodeIndex == -1 ? 0 : Node.GetSubsector(nodeIndex));
+                return;
+            }
+
+            nodesStack.Add(nodeIndex);
+
+            SetupSubsectorShapes(nodesStack, nodes[nodeIndex].Children[0]);
+            SetupSubsectorShapes(nodesStack, nodes[nodeIndex].Children[1]);
+
+            nodesStack.RemoveAt(nodesStack.Count - 1);
+        }
+
+        private void SetupSubsectorShape(List<int> nodesStack, int subsectorIndex)
+        {
+            var node = nodes[nodesStack[0]];
+
+            var a1x = node.BoundingBox[0][2].ToFloat();
+            var a1y = node.BoundingBox[0][0].ToFloat();
+            var a2x = node.BoundingBox[0][3].ToFloat();
+            var a2y = node.BoundingBox[0][1].ToFloat();
+            var b1x = node.BoundingBox[1][2].ToFloat();
+            var b1y = node.BoundingBox[1][0].ToFloat();
+            var b2x = node.BoundingBox[1][3].ToFloat();
+            var b2y = node.BoundingBox[1][1].ToFloat();
+            var x1 = MathF.Min(a1x, MathF.Min(a2x, MathF.Min(b1x, b2x)));
+            var y1 = MathF.Min(a1y, MathF.Min(a2y, MathF.Min(b1y, b2y)));
+            var x2 = MathF.Max(a1x, MathF.Max(a2x, MathF.Max(b1x, b2x)));
+            var y2 = MathF.Max(a1y, MathF.Max(a2y, MathF.Max(b1y, b2y)));
+
+            var polygon = new List<Vector2>
+            {
+                new(x1, y1),
+                new(x2, y1),
+                new(x2, y2),
+                new(x1, y2)
+            };
+
+            var n1 = NodeSplit(nodes[nodesStack[0]]);
+            var n2 = NodeSplit(nodes[nodesStack[0]]);
+            var n3 = NodeSplit(nodes[nodesStack[0]]);
+            var n4 = NodeSplit(nodes[nodesStack[0]]);
+
+
+            static (Vector2, Vector2) NodeSplit(Node node)
+            {
+                var x = node.X.ToFloat();
+                var y = node.Y.ToFloat();
+                var dx = node.Dx.ToFloat();
+                var dy = node.Dy.ToFloat();
+
+                return (new(x, y), new(x + dx, y + dy));
+            }
+
+            // if (MathF.Abs(x2 - x1) < float.Epsilon || MathF.Abs(y2 - y1) < float.Epsilon)
+            // {
+            //     ;
+            // }
+            //
+            // var subsectorSegs = new ReadOnlySpan<Seg>(segs, subsector.FirstSeg, subsector.SegCount);
+            //
+            // foreach (var seg in subsectorSegs)
+            // {
+            //     var segV1 = seg.Vertex1.ToVector2();
+            //     var segV2 = seg.Vertex2.ToVector2();
+            //
+            //     for (var i = 0; i < polygon.Count; i++)
+            //     {
+            //         var polyV1 = polygon[i];
+            //         var polyV2 = polygon[(i + 1) % polygon.Count];
+            //
+            //         if (GeometryHelper.SegmentsIntersect(segV1, segV2, polyV1, polyV2, out var point))
+            //         {
+            //             ;
+            //         }
+            //     }
+            // }
         }
 
         private void GroupLines()
@@ -236,7 +324,6 @@ namespace ManagedDoom
         public string Title => title;
 
 
-
         private static readonly Bgm[] e4BgmList = new Bgm[]
         {
             Bgm.E3M4, // American   e4m1
@@ -247,7 +334,7 @@ namespace ManagedDoom
             Bgm.E2M4, // Romero     e4m6
             Bgm.E2M6, // J.Anderson e4m7 CHIRON.WAD
             Bgm.E2M5, // Shawn      e4m8
-            Bgm.E1M9  // Tim        e4m9
+            Bgm.E1M9 // Tim        e4m9
         };
 
         public static Bgm GetMapBgm(GameOptions options)

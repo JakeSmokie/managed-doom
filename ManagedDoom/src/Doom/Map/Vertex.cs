@@ -16,6 +16,7 @@
 
 
 using System;
+using Microsoft.Xna.Framework;
 
 namespace ManagedDoom
 {
@@ -63,5 +64,15 @@ namespace ManagedDoom
 
         public Fixed X => x;
         public Fixed Y => y;
+
+        public Vector2 ToGlVector2()
+        {
+            return new(-x.ToFloat(), y.ToFloat());
+        }
+
+        public Vector2 ToVector2()
+        {
+            return new(x.ToFloat(), y.ToFloat());
+        }
     }
 }
