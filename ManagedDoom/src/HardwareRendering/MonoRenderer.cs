@@ -446,21 +446,28 @@ namespace ManagedDoom.HardwareRendering
 
         private void DrawSubsectorFlat(Subsector subsector, bool floor)
         {
-            var points = subsector.Points;
             var sector = subsector.Sector;
-            var z = floor ? sector.FloorHeight.ToFloat() : sector.CeilingHeight.ToFloat();
+            var flatIndex = floor ? sector.FloorFlat : sector.CeilingFlat;
 
-            var flat = commonResource.Flats[floor ? sector.FloorFlat : sector.CeilingFlat];
+            if (flatIndex == commonResource.Flats.SkyFlatNumber)
+            {
+                return;
+            }
+
+            var flat = commonResource.Flats[flatIndex];
+
             var texture2D = flat.Texture2D;
+            var points = subsector.Points;
+            var z = floor ? sector.FloorHeight.ToFloat() : sector.CeilingHeight.ToFloat();
 
             for (var i = 0; i < points.Length; i++)
             {
                 var point = points[i];
-                
+
                 triangleVertices[vertexesAmount + i].Position = new(-point.X, z, point.Y);
                 triangleVertices[vertexesAmount + i].TextureCoordinate = new(-point.X / texture2D.Width, point.Y / texture2D.Height);
             }
-            
+
             var indices = 0;
             for (var i = 0; i < points.Length - 2; i++)
             {
