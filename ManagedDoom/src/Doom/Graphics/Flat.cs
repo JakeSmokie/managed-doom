@@ -14,8 +14,9 @@
 //
 
 
-
 using System;
+using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework.Graphics;
 
 namespace ManagedDoom
 {
@@ -24,15 +25,40 @@ namespace ManagedDoom
         private string name;
         private byte[] data;
 
-        public Flat(string name, byte[] data)
+        public Flat(string name, byte[] data, Palette palette)
         {
             this.name = name;
             this.data = data;
+
+            if (palette != null)
+            {
+                const int width = 64;
+                const int height = 64;
+                var colors = palette[0];
+
+                if (data.Length == width * height)
+                {
+                    var pixels = new Color[data.Length];
+                    for (var x = 0; x < data.Length; x++)
+                    {
+                        pixels[x].PackedValue = colors[data[x]];
+                    }
+
+                    var texture2D = new Texture2D(DoomApplication.StaticGraphicsDevice, width, height);
+                    texture2D.SetData(pixels);
+
+                    Texture2D = texture2D;
+                }
+                else
+                {
+                    throw new ApplicationException($"Flat {name} is not 64x64");
+                }
+            }
         }
 
         public static Flat FromData(string name, byte[] data)
         {
-            return new Flat(name, data);
+            return new Flat(name, data, null);
         }
 
         public override string ToString()
@@ -42,5 +68,6 @@ namespace ManagedDoom
 
         public string Name => name;
         public byte[] Data => data;
+        public Texture2D Texture2D { get; set; }
     }
 }

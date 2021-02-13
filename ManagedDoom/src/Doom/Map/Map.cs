@@ -28,6 +28,12 @@ namespace ManagedDoom
 {
     public sealed class Map
     {
+        private struct Split
+        {
+            public Vector2 Pos;
+            public Vector2 Delta;
+        }
+
         private TextureLookup textures;
         private FlatLookup flats;
         private TextureAnimation animation;
@@ -95,7 +101,7 @@ namespace ManagedDoom
                 blockMap = BlockMap.FromWad(wad, map + 10, lines);
                 reject = Reject.FromWad(wad, map + 9, sectors);
 
-                SetupSubsectorShapes(new List<int>(), nodes.Length - 1);
+                RecursiveBuildSubsectorPoly(new Stack<Split>(nodes.Length / 2 + 1), nodes.Length - 1);
                 GroupLines();
 
                 skyTexture = GetSkyTextureByMapName(name);
@@ -129,86 +135,137 @@ namespace ManagedDoom
             }
         }
 
-        private void SetupSubsectorShapes(List<int> nodesStack, int nodeIndex)
+        private void RecursiveBuildSubsectorPoly(Stack<Split> splits, int nodeIndex)
         {
-            if (Node.IsSubsector(nodeIndex))
+            var node = nodes[nodeIndex];
+            var point = node.SplitPoint;
+            var delta = node.SplitDelta;
+
+            for (var i = node.Children.Length - 1; i >= 0; i--)
             {
-                SetupSubsectorShape(nodesStack, nodeIndex == -1 ? 0 : Node.GetSubsector(nodeIndex));
+                splits.Push(new Split { Pos = point, Delta = i == 0 ? delta : -delta });
+                var child = node.Children[i];
+
+                if (Node.IsSubsector(child))
+                {
+                    BuildSubsectorPoly(splits, Node.GetSubsector(child));
+                }
+                else
+                {
+                    RecursiveBuildSubsectorPoly(splits, child);
+                }
+
+                splits.Pop();
+            }
+        }
+
+        private void BuildSubsectorPoly(Stack<Split> splits, int subsectorIndex)
+        {
+            var poly = new List<Vector2>(16)
+            {
+                new(-32768, 32768),
+                new(32768, 32768),
+                new(32768, -32768),
+                new(-32768, -32768) // TODO: Replace with MaxCoordinate for each map format
+            };
+
+            foreach (var s in splits)
+            {
+                CropPolygon(poly, s);
+            }
+
+            var subsector = subsectors[subsectorIndex];
+            foreach (var seg in new ReadOnlySpan<Seg>(segs, subsector.FirstSeg, subsector.SegCount))
+            {
+                var v1 = seg.Vertex1.ToVector2();
+                var v2 = seg.Vertex2.ToVector2();
+
+                CropPolygon(poly, new Split { Pos = v1, Delta = v2 - v1 });
+            }
+
+            if (poly.Count > 1)
+            {
+                // Remove any zero-length lines
+                var prev = poly[0];
+                for (var i = poly.Count - 1; i >= 0; i--)
+                {
+                    if (Vector2.DistanceSquared(poly[i], prev) < 0.001f)
+                    {
+                        poly.RemoveAt(i);
+                    }
+                    else
+                    {
+                        prev = poly[i];
+                    }
+                }
+            }
+
+            subsector.Points = poly.Count >= 3 ? poly.ToArray() : null;
+        }
+
+        private void CropPolygon(List<Vector2> poly, Split split)
+        {
+            if (poly.Count == 0)
+            {
                 return;
             }
 
-            nodesStack.Add(nodeIndex);
+            var prev = poly[^1];
+            var side1 = (prev.Y - split.Pos.Y) * split.Delta.X - (prev.X - split.Pos.X) * split.Delta.Y;
+            var newPoly = new List<Vector2>(poly.Count);
+            const float epsilon = 0.00001f;
 
-            SetupSubsectorShapes(nodesStack, nodes[nodeIndex].Children[0]);
-            SetupSubsectorShapes(nodesStack, nodes[nodeIndex].Children[1]);
-
-            nodesStack.RemoveAt(nodesStack.Count - 1);
-        }
-
-        private void SetupSubsectorShape(List<int> nodesStack, int subsectorIndex)
-        {
-            var node = nodes[nodesStack[0]];
-
-            var a1x = node.BoundingBox[0][2].ToFloat();
-            var a1y = node.BoundingBox[0][0].ToFloat();
-            var a2x = node.BoundingBox[0][3].ToFloat();
-            var a2y = node.BoundingBox[0][1].ToFloat();
-            var b1x = node.BoundingBox[1][2].ToFloat();
-            var b1y = node.BoundingBox[1][0].ToFloat();
-            var b2x = node.BoundingBox[1][3].ToFloat();
-            var b2y = node.BoundingBox[1][1].ToFloat();
-            var x1 = MathF.Min(a1x, MathF.Min(a2x, MathF.Min(b1x, b2x)));
-            var y1 = MathF.Min(a1y, MathF.Min(a2y, MathF.Min(b1y, b2y)));
-            var x2 = MathF.Max(a1x, MathF.Max(a2x, MathF.Max(b1x, b2x)));
-            var y2 = MathF.Max(a1y, MathF.Max(a2y, MathF.Max(b1y, b2y)));
-
-            var polygon = new List<Vector2>
+            foreach (var cur in poly)
             {
-                new(x1, y1),
-                new(x2, y1),
-                new(x2, y2),
-                new(x1, y2)
-            };
+                var side2 = (cur.Y - split.Pos.Y) * split.Delta.X - (cur.X - split.Pos.X) * split.Delta.Y;
 
-            var n1 = NodeSplit(nodes[nodesStack[0]]);
-            var n2 = NodeSplit(nodes[nodesStack[0]]);
-            var n3 = NodeSplit(nodes[nodesStack[0]]);
-            var n4 = NodeSplit(nodes[nodesStack[0]]);
+                // Front?
+                if (side2 < -epsilon)
+                {
+                    if (side1 > epsilon)
+                    {
+                        GeometryHelper.LinesIntersect(
+                            split.Pos,
+                            split.Pos + split.Delta,
+                            prev,
+                            cur,
+                            out var point
+                        );
 
+                        newPoly.Add(point);
+                    }
 
-            static (Vector2, Vector2) NodeSplit(Node node)
-            {
-                var x = node.X.ToFloat();
-                var y = node.Y.ToFloat();
-                var dx = node.Dx.ToFloat();
-                var dy = node.Dy.ToFloat();
+                    newPoly.Add(cur);
+                }
+                // Back?
+                else if (side2 > epsilon)
+                {
+                    if (side1 < -epsilon)
+                    {
+                        GeometryHelper.LinesIntersect(
+                            split.Pos,
+                            split.Pos + split.Delta,
+                            prev,
+                            cur,
+                            out var point
+                        );
 
-                return (new(x, y), new(x + dx, y + dy));
+                        newPoly.Add(point);
+                    }
+                }
+                else
+                {
+                    // On the plane
+                    newPoly.Add(cur);
+                }
+
+                // Next
+                prev = cur;
+                side1 = side2;
             }
 
-            // if (MathF.Abs(x2 - x1) < float.Epsilon || MathF.Abs(y2 - y1) < float.Epsilon)
-            // {
-            //     ;
-            // }
-            //
-            // var subsectorSegs = new ReadOnlySpan<Seg>(segs, subsector.FirstSeg, subsector.SegCount);
-            //
-            // foreach (var seg in subsectorSegs)
-            // {
-            //     var segV1 = seg.Vertex1.ToVector2();
-            //     var segV2 = seg.Vertex2.ToVector2();
-            //
-            //     for (var i = 0; i < polygon.Count; i++)
-            //     {
-            //         var polyV1 = polygon[i];
-            //         var polyV2 = polygon[(i + 1) % polygon.Count];
-            //
-            //         if (GeometryHelper.SegmentsIntersect(segV1, segV2, polyV1, polyV2, out var point))
-            //         {
-            //             ;
-            //         }
-            //     }
-            // }
+            poly.Clear();
+            poly.AddRange(newPoly);
         }
 
         private void GroupLines()

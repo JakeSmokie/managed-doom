@@ -718,9 +718,8 @@ namespace ManagedDoom.SoftwareRendering
 
         public void Render(Player player)
         {
-            monoRenderer.SetProjection(player);
-            
             World = player.Mobj.World;
+            monoRenderer.SetProjection(player);
 
             viewX = player.Mobj.X;
             viewY = player.Mobj.Y;
@@ -789,12 +788,8 @@ namespace ManagedDoom.SoftwareRendering
         {
             var target = World.Map.Subsectors[subsector];
 
+            monoRenderer.DrawSubsector(target);
             AddSprites(target.Sector, validCount);
-
-            if (subsector == 3401)
-            {
-                ;
-            }
 
             for (var i = 0; i < target.SegCount; i++)
             {

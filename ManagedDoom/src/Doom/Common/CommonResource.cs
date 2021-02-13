@@ -48,7 +48,7 @@ namespace ManagedDoom
                 palette = new Palette(wad);
                 colorMap = new ColorMap(wad);
                 textures = new TextureLookup(wad, palette);
-                flats = new FlatLookup(wad);
+                flats = new FlatLookup(wad, palette);
                 sprites = new SpriteLookup(wad, palette);
                 animation = new TextureAnimation(textures, flats);
             }
@@ -65,7 +65,7 @@ namespace ManagedDoom
             resource.palette = new Palette(resource.wad);
             resource.colorMap = new ColorMap(resource.wad);
             resource.textures = new TextureLookup(resource.wad, true, resource.palette);
-            resource.flats = new FlatLookup(resource.wad, true);
+            resource.flats = new FlatLookup(resource.wad, true, resource.palette);
             resource.sprites = new SpriteLookup(resource.wad, true, resource.palette);
             resource.animation = new TextureAnimation(resource.textures, resource.flats);
             return resource;

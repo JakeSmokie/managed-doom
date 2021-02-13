@@ -16,6 +16,7 @@
 
 
 using System;
+using Microsoft.Xna.Framework;
 
 namespace ManagedDoom
 {
@@ -61,13 +62,17 @@ namespace ManagedDoom
             {
                 var offset = Subsector.dataSize * i;
                 subsectors[i] = Subsector.FromData(data, offset, segs);
+                subsectors[i].Id = i;
             }
 
             return subsectors;
         }
 
+        public int Id { get; set; }
+
         public Sector Sector => sector;
         public int SegCount => segCount;
         public int FirstSeg => firstSeg;
+        public Vector2[] Points { get; set; }
     }
 }

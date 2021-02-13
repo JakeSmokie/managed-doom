@@ -44,7 +44,7 @@ namespace ManagedDoom.HardwareRendering
 
         private readonly BasicEffect basicEffect;
         private readonly AlphaTestEffect alphaMaskEffect;
-        
+
         private static readonly DepthStencilState alwaysStencilState = new()
         {
             StencilEnable = true,
@@ -54,7 +54,7 @@ namespace ManagedDoom.HardwareRendering
             DepthBufferEnable = true,
             DepthBufferWriteEnable = false,
         };
-        
+
         private static readonly DepthStencilState equalStencilState = new()
         {
             StencilEnable = true,
@@ -117,7 +117,7 @@ namespace ManagedDoom.HardwareRendering
             basicEffect.Projection = projectionMatrix;
             basicEffect.View = viewMatrix;
             basicEffect.World = worldMatrix;
-            
+
             alphaMaskEffect.Projection = projectionMatrix;
             alphaMaskEffect.View = viewMatrix;
             alphaMaskEffect.World = worldMatrix;
@@ -139,7 +139,9 @@ namespace ManagedDoom.HardwareRendering
                 MultiSampleAntiAlias = true
             };
 
-            graphicsDevice.SamplerStates[0] = SamplerState.PointClamp;
+            graphicsDevice.SamplerStates[0] = SamplerState.PointWrap;
+            // graphicsDevice.SamplerStates[0].AddressU = TextureAddressMode.Wrap;
+            // graphicsDevice.SamplerStates[0].AddressV = TextureAddressMode.Wrap;
             graphicsDevice.BlendState = BlendState.NonPremultiplied;
 
             vertexBuffer.SetData(triangleVertices);
@@ -149,7 +151,7 @@ namespace ManagedDoom.HardwareRendering
 
             graphicsDevice.Clear(Color.Aqua);
 
-            if (true)
+            if (false)
             {
                 graphicsDevice.DepthStencilState = alwaysStencilState;
                 for (var index = 0; index < meshesAmount; index++)
@@ -158,7 +160,7 @@ namespace ManagedDoom.HardwareRendering
 
                     alphaMaskEffect.Alpha = mesh.Alpha;
                     alphaMaskEffect.Texture = mesh.Texture2D;
-            
+
                     foreach (var pass in alphaMaskEffect.CurrentTechnique.Passes)
                     {
                         pass.Apply();
@@ -172,8 +174,9 @@ namespace ManagedDoom.HardwareRendering
                 }
             }
 
-            graphicsDevice.DepthStencilState = equalStencilState;
-            for (var index = meshesAmount - 1; index >= 0; index--)
+            // graphicsDevice.DepthStencilState = equalStencilState;
+            graphicsDevice.DepthStencilState = DepthStencilState.Default;
+            for (var index = 0; index < meshesAmount; index++)
             {
                 var mesh = meshes[index];
                 basicEffect.Alpha = mesh.Alpha;
@@ -190,34 +193,6 @@ namespace ManagedDoom.HardwareRendering
                     );
                 }
             }
-        }
-
-        public void DrawMaskedRange(Seg seg)
-        {
-            if (seg.SideDef.MiddleTexture <= 0)
-            {
-                return;
-            }
-            
-            var (x1, y1) = seg.Vertex1.ToGlVector2();
-            var (x2, y2) = seg.Vertex2.ToGlVector2();
-
-            var floor = MathF.Max(seg.BackSector.FloorHeight.ToFloat(), seg.FrontSector.FloorHeight.ToFloat());
-            var ceiling = MathF.Min(seg.BackSector.CeilingHeight.ToFloat(), seg.FrontSector.CeilingHeight.ToFloat());
-
-            ref var mesh = ref DrawRectangle(
-                new(new(x1, ceiling, y1), new(0, 0)),
-                new(new(x2, ceiling, y2), new(1, 0)),
-                new(new(x1, floor, y1), new(0, 1)),
-                new(new(x2, floor, y2), new(1, 1))
-            );
-
-            var wallTexture = commonResource
-                .Textures[threeDRenderer.World.Specials.TextureTranslation[seg.SideDef.MiddleTexture]]
-                .Composite.Texture2D;
-
-            mesh.Texture2D = wallTexture;
-            mesh.Alpha = seg.LineDef.Action == 208 ? seg.LineDef.ActionArgs[1] / 255f : 1;
         }
 
         public void DrawSprite(ThreeDRenderer.VisSprite sprite)
@@ -263,38 +238,120 @@ namespace ManagedDoom.HardwareRendering
                 return;
             }
 
+            DrawSolidWallTopOrBottom(true, seg);
+            DrawSolidWallTopOrBottom(false, seg);
+        }
+
+        public void DrawPassWall(Seg seg)
+        {
+            DrawMaskedRange(seg);
+
+            DrawSolidWallTopOrBottom(true, seg);
+            DrawSolidWallTopOrBottom(false, seg);
+        }
+
+        private void DrawSolidWallTopOrBottom(bool top, Seg seg)
+        {
             var frontFloor = seg.FrontSector.FloorHeight.ToFloat();
             var backFloor = seg.BackSector.FloorHeight.ToFloat();
             var frontCeiling = seg.FrontSector.CeilingHeight.ToFloat();
             var backCeiling = seg.BackSector.CeilingHeight.ToFloat();
+            var texture = top ? seg.SideDef.TopTexture : seg.SideDef.BottomTexture;
 
-            DrawSolidWallTopOrBottom(seg, frontCeiling, backCeiling, seg.SideDef.TopTexture);
-            DrawSolidWallTopOrBottom(seg, frontFloor, backFloor, seg.SideDef.BottomTexture);
-        }
+            var z1 = top ? backCeiling : backFloor;
+            var z2 = top ? frontCeiling : frontFloor;
 
-        private void DrawSolidWallTopOrBottom(Seg seg, float z1, float z2, int texture)
-        {
             if (texture <= 0)
             {
                 return;
             }
-            
-            var (x1, y1) = seg.Vertex1.ToGlVector2();
-            var (x2, y2) = seg.Vertex2.ToGlVector2();
 
-            ref var mesh = ref DrawRectangle(
-                new(new(x1, z1, y1), new(0, 0)),
-                new(new(x2, z1, y2), new(1, 0)),
-                new(new(x1, z2, y1), new(0, 1)),
-                new(new(x2, z2, y2), new(1, 1))
-            );
+            var floor = MathF.Min(z1, z2);
+            var ceiling = MathF.Max(z1, z2);
 
+            var v1 = seg.Vertex1.ToGlVector2();
+            var v2 = seg.Vertex2.ToGlVector2();
 
             var wallTexture = commonResource
                 .Textures[threeDRenderer.World.Specials.TextureTranslation[texture]]
-                .Composite.Texture2D;
+                .Composite;
 
-            mesh.Texture2D = wallTexture;
+            var width = Vector2.Distance(v1, v2);
+            var height = ceiling - floor;
+            var xOffset = seg.SideDef.TextureOffset.ToFloat() + seg.Offset.ToFloat();
+            var yOffset = seg.SideDef.RowOffset.ToFloat();
+
+            var texWidth = wallTexture.Width;
+            var texHeight = wallTexture.Height;
+
+            if ((seg.LineDef.Flags & LineFlags.DontPegTop) == 0 && top)
+            {
+                yOffset += backCeiling - backFloor;
+            }
+
+            if ((seg.LineDef.Flags & LineFlags.DontPegBottom) != 0 && !top)
+            {
+                yOffset += frontCeiling - backFloor;
+            }
+
+            ref var mesh = ref DrawRectangle(
+                new(new(v1.X, ceiling, v1.Y), new(xOffset / texWidth, yOffset / texHeight)),
+                new(new(v2.X, ceiling, v2.Y), new((xOffset + width) / texWidth, yOffset / texHeight)),
+                new(new(v1.X, floor, v1.Y), new(xOffset / texWidth, (yOffset + height) / texHeight)),
+                new(new(v2.X, floor, v2.Y), new((xOffset + width) / texWidth, (yOffset + height) / texHeight))
+            );
+
+            mesh.Texture2D = wallTexture.Texture2D;
+        }
+
+        private void DrawMaskedRange(Seg seg)
+        {
+            if (seg.SideDef.MiddleTexture <= 0)
+            {
+                return;
+            }
+
+            var wallTexture = commonResource
+                .Textures[threeDRenderer.World.Specials.TextureTranslation[seg.SideDef.MiddleTexture]]
+                .Composite;
+
+            var texWidth = wallTexture.Width;
+            var texHeight = wallTexture.Height;
+
+            var v1 = seg.Vertex1.ToGlVector2();
+            var v2 = seg.Vertex2.ToGlVector2();
+            var width = Vector2.Distance(v1, v2);
+
+            var xOffset = seg.SideDef.TextureOffset.ToFloat() + seg.Offset.ToFloat();
+            var yOffset = seg.SideDef.RowOffset.ToFloat();
+
+            var floor = MathF.Max(seg.BackSector.FloorHeight.ToFloat(), seg.FrontSector.FloorHeight.ToFloat());
+            var ceiling = MathF.Min(seg.BackSector.CeilingHeight.ToFloat(), seg.FrontSector.CeilingHeight.ToFloat());
+
+            var peg = (seg.LineDef.Flags & LineFlags.DontPegBottom) == 0;
+
+            float zTop, zBottom;
+
+            if (peg)
+            {
+                zTop = ceiling - yOffset;
+                zBottom = ceiling - texHeight - yOffset;
+            }
+            else
+            {
+                zTop = floor + texHeight + yOffset;
+                zBottom = floor + yOffset;
+            }
+
+            ref var mesh = ref DrawRectangle(
+                new(new(v1.X, zTop, v1.Y), new(xOffset / texWidth, 0)),
+                new(new(v2.X, zTop, v2.Y), new((xOffset + width) / texWidth, 0)),
+                new(new(v1.X, zBottom, v1.Y), new(xOffset / texWidth, 1)),
+                new(new(v2.X, zBottom, v2.Y), new((xOffset + width) / texWidth, 1))
+            );
+
+            mesh.Texture2D = wallTexture.Texture2D;
+            mesh.Alpha = seg.LineDef.Action == 208 ? seg.LineDef.ActionArgs[1] / 255f : 1;
         }
 
         private void DrawMiddleSolidWall(Seg seg)
@@ -305,39 +362,38 @@ namespace ManagedDoom.HardwareRendering
             {
                 return;
             }
-            
-            var (x1, y1) = seg.Vertex1.ToGlVector2();
-            var (x2, y2) = seg.Vertex2.ToGlVector2();
+
+            var v1 = seg.Vertex1.ToGlVector2();
+            var v2 = seg.Vertex2.ToGlVector2();
 
             var ceiling = seg.FrontSector.CeilingHeight.ToFloat();
             var floor = seg.FrontSector.FloorHeight.ToFloat();
 
-            ref var mesh = ref DrawRectangle(
-                new(new(x1, ceiling, y1), new(0, 0)),
-                new(new(x2, ceiling, y2), new(1, 0)),
-                new(new(x1, floor, y1), new(0, 1)),
-                new(new(x2, floor, y2), new(1, 1))
-            );
-
-
             var wallTexture = commonResource
                 .Textures[threeDRenderer.World.Specials.TextureTranslation[texture]]
-                .Composite.Texture2D;
+                .Composite;
 
-            mesh.Texture2D = wallTexture;
-        }
+            var width = Vector2.Distance(v1, v2);
+            var height = ceiling - floor;
+            var xOffset = seg.SideDef.TextureOffset.ToFloat() + seg.Offset.ToFloat();
+            var yOffset = seg.SideDef.RowOffset.ToFloat();
 
-        public void DrawPassWall(Seg seg)
-        {
-            DrawMaskedRange(seg);
+            var texWidth = wallTexture.Width;
+            var texHeight = wallTexture.Height;
 
-            var frontFloor = seg.FrontSector.FloorHeight.ToFloat();
-            var backFloor = seg.BackSector.FloorHeight.ToFloat();
-            var frontCeiling = seg.FrontSector.CeilingHeight.ToFloat();
-            var backCeiling = seg.BackSector.CeilingHeight.ToFloat();
+            if ((seg.LineDef.Flags & LineFlags.DontPegBottom) != 0)
+            {
+                yOffset -= ceiling % texHeight;
+            }
 
-            DrawSolidWallTopOrBottom(seg, frontCeiling, backCeiling, seg.SideDef.TopTexture);
-            DrawSolidWallTopOrBottom(seg, frontFloor, backFloor, seg.SideDef.BottomTexture);
+            ref var mesh = ref DrawRectangle(
+                new(new(v1.X, ceiling, v1.Y), new(xOffset / texWidth, yOffset / texHeight)),
+                new(new(v2.X, ceiling, v2.Y), new((xOffset + width) / texWidth, yOffset / texHeight)),
+                new(new(v1.X, floor, v1.Y), new(xOffset / texWidth, (yOffset + height) / texHeight)),
+                new(new(v2.X, floor, v2.Y), new((xOffset + width) / texWidth, (yOffset + height) / texHeight))
+            );
+
+            mesh.Texture2D = wallTexture.Texture2D;
         }
 
         private ref RenderMesh DrawRectangle(
@@ -375,6 +431,66 @@ namespace ManagedDoom.HardwareRendering
             indicesAmount += 6;
 
             return ref meshes[meshesAmount - 1];
+        }
+
+        public void DrawSubsector(Subsector subsector)
+        {
+            if (subsector.Points == null)
+            {
+                return;
+            }
+
+            DrawSubsectorFlat(subsector, true);
+            DrawSubsectorFlat(subsector, false);
+        }
+
+        private void DrawSubsectorFlat(Subsector subsector, bool floor)
+        {
+            var points = subsector.Points;
+            var sector = subsector.Sector;
+            var z = floor ? sector.FloorHeight.ToFloat() : sector.CeilingHeight.ToFloat();
+
+            var flat = commonResource.Flats[floor ? sector.FloorFlat : sector.CeilingFlat];
+            var texture2D = flat.Texture2D;
+
+            for (var i = 0; i < points.Length; i++)
+            {
+                var point = points[i];
+                
+                triangleVertices[vertexesAmount + i].Position = new(-point.X, z, point.Y);
+                triangleVertices[vertexesAmount + i].TextureCoordinate = new(-point.X / texture2D.Width, point.Y / texture2D.Height);
+            }
+            
+            var indices = 0;
+            for (var i = 0; i < points.Length - 2; i++)
+            {
+                triangleIndices[indicesAmount + indices + 0] = vertexesAmount;
+                triangleIndices[indicesAmount + indices + 1] = vertexesAmount + i + 1;
+                triangleIndices[indicesAmount + indices + 2] = vertexesAmount + i + 2;
+
+                indices += 3;
+            }
+
+            meshes[meshesAmount] = new RenderMesh
+            {
+                Texture2D = texture2D,
+                IndicesOffset = indicesAmount,
+                VertexesOffset = vertexesAmount,
+                IndicesCount = indices,
+                VertexesCount = points.Length,
+                Alpha = 1,
+                Sprite = false
+            };
+
+            if (Frame == 0)
+            {
+                using var file = File.OpenWrite($"sprites/{flat.Name}.jpeg");
+                texture2D.SaveAsJpeg(file, texture2D.Width, texture2D.Height);
+            }
+
+            meshesAmount += 1;
+            vertexesAmount += points.Length;
+            indicesAmount += indices;
         }
     }
 }

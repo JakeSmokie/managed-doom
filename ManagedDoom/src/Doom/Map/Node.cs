@@ -16,6 +16,7 @@
 
 
 using System;
+using Microsoft.Xna.Framework;
 
 namespace ManagedDoom
 {
@@ -153,5 +154,8 @@ namespace ManagedDoom
         public Fixed Dy => dy;
         public Fixed[][] BoundingBox => boundingBox;
         public int[] Children => children;
+
+        public Vector2 SplitPoint => new(X.ToFloat(), Y.ToFloat());
+        public Vector2 SplitDelta => new(Dx.ToFloat(), Dy.ToFloat());
     }
 }

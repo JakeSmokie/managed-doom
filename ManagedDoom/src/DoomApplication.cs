@@ -70,7 +70,10 @@ namespace ManagedDoom
         public DoomApplication(CommandLineArgs args)
         {
             this.args = args;
-            graphics = new GraphicsDeviceManager(this) { PreferredDepthStencilFormat = DepthFormat.Depth24Stencil8 };
+            graphics = new GraphicsDeviceManager(this)
+            {
+                // PreferredDepthStencilFormat = DepthFormat.Depth24Stencil8
+            };
 
             config = new Config(ConfigUtilities.GetConfigPath());
         }

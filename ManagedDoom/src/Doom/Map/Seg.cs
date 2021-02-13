@@ -32,6 +32,8 @@ namespace ManagedDoom
         private Sector frontSector;
         private Sector backSector;
 
+        public int Id;
+
         public Seg(
             Vertex vertex1,
             Vertex vertex2,
@@ -92,6 +94,7 @@ namespace ManagedDoom
             {
                 var offset = Seg.dataSize * i;
                 segs[i] = Seg.FromData(data, offset, vertices, lines);
+                segs[i].Id = i;
             }
 
             return segs;

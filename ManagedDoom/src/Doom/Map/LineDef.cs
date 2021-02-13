@@ -144,8 +144,8 @@ namespace ManagedDoom
             var side1Number = BitConverter.ToInt16(data, offset + 12);
 
             return new LineDef(
-                vertices[vertex1Number],
-                vertices[vertex2Number],
+                vertex1Number == -1 ? null : vertices[vertex1Number],
+                vertex2Number == -1 ? null : vertices[vertex2Number],
                 (LineFlags) flags,
                 (LineSpecial) special,
                 tag,
@@ -157,6 +157,11 @@ namespace ManagedDoom
         {
             var length = wad.GetLumpSize(lump);
 
+            if (wad.GetLumpNumber("BEHAVIOR") != -1)
+            {
+                return FromWadHexen(wad, lump, vertices, sides, length);
+            }
+            
             if (length % dataSize == 0)
             {
                 var data = wad.ReadLump(lump);
@@ -171,11 +176,6 @@ namespace ManagedDoom
                 }
 
                 return lines;
-            }
-            
-            if (length % hexenDataSize == 0)
-            {
-                return FromWadHexen(wad, lump, vertices, sides, length);
             }
 
             throw new Exception();

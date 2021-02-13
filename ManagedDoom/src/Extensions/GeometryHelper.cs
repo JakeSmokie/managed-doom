@@ -6,7 +6,7 @@ namespace ManagedDoom.Extensions
 {
     public static class GeometryHelper
     {
-        public static bool SegmentsIntersect(Vector2 a1, Vector2 a2, Vector2 b1, Vector2 b2, out Vector2 intersectionPoint)
+        public static bool LinesIntersect(Vector2 a1, Vector2 a2, Vector2 b1, Vector2 b2, out Vector2 intersectionPoint)
         {
             var axd = a1.X - a2.X;
             var byd = b1.Y - b2.Y;
@@ -27,6 +27,8 @@ namespace ManagedDoom.Extensions
             
             intersectionPoint = new(x, y);
 
+            return true;
+            
             var aMinX = MathF.Min(a1.X, a2.X);
             var aMaxX = MathF.Max(a1.X, a2.X);
             var aMinY = MathF.Min(a1.Y, a2.Y);

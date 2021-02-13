@@ -369,7 +369,9 @@ namespace ManagedDoom
                 return !solid;
             }
 
-            return (thing.Flags & MobjFlags.Solid) == 0;
+            return (thing.Flags & MobjFlags.Solid) == 0
+                || currentThing.Z + currentThing.Height < thing.Z
+                || currentThing.Z > thing.Z + thing.Height;
         }
 
         /// <summary>
@@ -709,9 +711,7 @@ namespace ManagedDoom
             if (thing.Player != null && thing.Z < thing.FloorZ)
             {
                 thing.Player.ViewHeight -= thing.FloorZ - thing.Z;
-
-                thing.Player.DeltaViewHeight =
-                    (Player.NormalViewHeight - thing.Player.ViewHeight) >> 3;
+                thing.Player.DeltaViewHeight = (Player.NormalViewHeight - thing.Player.ViewHeight) >> 3;
             }
 
             // Adjust height.

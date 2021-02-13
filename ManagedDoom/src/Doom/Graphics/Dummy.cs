@@ -98,7 +98,7 @@ namespace ManagedDoom
                     }
                 }
 
-                dummyFlat = new Flat("DUMMY", data);
+                dummyFlat = new Flat("DUMMY", data, null);
 
                 return dummyFlat;
             }
@@ -116,7 +116,7 @@ namespace ManagedDoom
             }
             else
             {
-                dummySkyFlat = new Flat("DUMMY", GetFlat().Data);
+                dummySkyFlat = new Flat("DUMMY", GetFlat().Data, null);
 
                 return dummySkyFlat;
             }
