@@ -16,30 +16,32 @@
 
 using System;
 using System.Runtime.ExceptionServices;
-using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
 
 namespace ManagedDoom.UserInput
 {
     public sealed class SfmlUserInput : IUserInput, IDisposable
     {
+        private readonly DoomApplication doom;
         private Config config;
-        private GraphicsDeviceManager graphics;
+        private GraphicsDevice graphics;
 
         private bool useMouse;
 
         private bool[] weaponKeys;
         private int turnHeld;
 
-        private bool mouseGrabbed;
         private int windowCenterX;
         private int windowCenterY;
         private int mouseX;
         private int mouseY;
         private bool cursorCentered;
 
-        public SfmlUserInput(Config config, GraphicsDeviceManager graphics, bool useMouse)
+        public SfmlUserInput(Config config, DoomApplication doom, bool useMouse)
         {
+            this.doom = doom;
+
             try
             {
                 Console.Write("Initialize user input: ");
@@ -48,16 +50,15 @@ namespace ManagedDoom.UserInput
 
                 config.mouse_sensitivity = Math.Max(config.mouse_sensitivity, 0);
 
-                this.graphics = graphics;
+                graphics = doom.GraphicsDevice;
 
                 this.useMouse = useMouse;
 
                 weaponKeys = new bool[7];
                 turnHeld = 0;
 
-                mouseGrabbed = false;
-                windowCenterX = graphics.GraphicsDevice.PresentationParameters.BackBufferWidth / 2;
-                windowCenterY = graphics.GraphicsDevice.PresentationParameters.BackBufferHeight / 2;
+                windowCenterX = graphics.Viewport.Width / 2;
+                windowCenterY = graphics.Viewport.Height / 2;
                 mouseX = 0;
                 mouseY = 0;
                 cursorCentered = false;
@@ -197,7 +198,9 @@ namespace ManagedDoom.UserInput
             var ms = 0.5F * config.mouse_sensitivity;
             var mx = (int) MathF.Round(ms * mouseX);
             var my = (int) MathF.Round(ms * mouseY);
-            forward += my;
+
+            cmd.Pitch += my * 0x8;
+            
             if (strafe)
             {
                 side += mx * 2;
@@ -239,7 +242,7 @@ namespace ManagedDoom.UserInput
                 }
             }
 
-            if (mouseGrabbed)
+            if (doom.IsActive)
             {
                 foreach (var mouseButton in keyBinding.MouseButtons)
                 {
@@ -273,50 +276,23 @@ namespace ManagedDoom.UserInput
             cursorCentered = false;
         }
 
-        public void GrabMouse()
-        {
-            if (useMouse && !mouseGrabbed)
-            {
-                // graphics.SetMouseCursorGrabbed(true); // TODO: Handle this
-                // graphics.SetMouseCursorVisible(false);
-                mouseGrabbed = true;
-                mouseX = 0;
-                mouseY = 0;
-                cursorCentered = false;
-            }
-        }
-
-        public void ReleaseMouse()
-        {
-            if (useMouse && mouseGrabbed)
-            {
-                // var posX = (int) (0.9 * graphics.Size.X);  // TODO: Handle this
-                // var posY = (int) (0.9 * graphics.Size.Y);
-                // Mouse.SetPosition(new Vector2i(posX, posY), graphics);
-                // graphics.SetMouseCursorGrabbed(false);
-                // graphics.SetMouseCursorVisible(true);
-                mouseGrabbed = false;
-            }
-        }
-
         private void UpdateMouse()
         {
-            if (mouseGrabbed)
+            if (doom.IsActive)
             {
                 if (cursorCentered)
                 {
-                    // var current = Mouse.GetPosition(graphics);
+                    var current = Mouse.GetState();
+                    mouseX = current.X - windowCenterX;
 
-                    // mouseX = current.X - windowCenterX;
-
-                    // if (config.mouse_disableyaxis)
-                    // {
-                        // mouseY = 0;
-                    // }
-                    // else
-                    // {
-                        // mouseY = -(current.Y - windowCenterY);
-                    // }  // TODO: Handle this
+                    if (config.mouse_disableyaxis)
+                    {
+                        mouseY = 0;
+                    }
+                    else
+                    {
+                        mouseY = -(current.Y - windowCenterY);
+                    }
                 }
                 else
                 {
@@ -324,22 +300,21 @@ namespace ManagedDoom.UserInput
                     mouseY = 0;
                 }
 
-                // Mouse.SetPosition(new Vector2i(windowCenterX, windowCenterY), graphics);  // TODO: Handle this
-                // var pos = Mouse.GetPosition(graphics);
-                // cursorCentered = (pos.X == windowCenterX && pos.Y == windowCenterY);
+                Mouse.SetPosition(windowCenterX, windowCenterY);
+                var pos = Mouse.GetState();
+                cursorCentered = (pos.X == windowCenterX && pos.Y == windowCenterY);
             }
             else
             {
                 mouseX = 0;
                 mouseY = 0;
+                cursorCentered = false;
             }
         }
 
         public void Dispose()
         {
             Console.WriteLine("Shutdown user input.");
-
-            ReleaseMouse();
         }
 
         public int MaxMouseSensitivity

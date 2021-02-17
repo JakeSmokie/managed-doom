@@ -125,10 +125,14 @@ namespace ManagedDoom.HardwareRendering
             var viewX = player.Mobj.X.ToFloat();
             var viewY = player.Mobj.Y.ToFloat();
             var viewZ = player.ViewZ.ToFloat();
-            var viewAngle = player.Mobj.Angle.ToRadian();
+            var yaw = player.Mobj.Angle.ToRadian();
+            var pitch = (float) player.Pitch.ToRadian();
+
+            var dx = -MathF.Cos((float) yaw);
+            var dy = MathF.Sin((float) yaw);
 
             camPosition = new Vector3(-viewX, viewZ, viewY);
-            camTarget = camPosition + new Vector3(-MathF.Cos((float) viewAngle), 0, MathF.Sin((float) viewAngle));
+            camTarget = camPosition + new Vector3(dx * MathF.Cos(pitch), MathF.Sin(pitch), dy * MathF.Cos(pitch));
             viewMatrix = Matrix.CreateLookAt(camPosition, camTarget, Vector3.Up);
             worldMatrix = Matrix.CreateWorld(Vector3.Zero, Vector3.Forward, Vector3.Up);
         }

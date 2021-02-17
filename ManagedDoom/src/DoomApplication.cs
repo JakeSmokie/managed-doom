@@ -209,7 +209,7 @@ namespace ManagedDoom
                     // music = ConfigUtilities.GetSfmlMusicInstance(config, resource.Wad);
                 }
 
-                userInput = new SfmlUserInput(config, graphics, !args.nomouse.Present);
+                userInput = new SfmlUserInput(config, this, !args.nomouse.Present);
 
                 events = new List<DoomEvent>();
 
@@ -560,9 +560,6 @@ namespace ManagedDoom
             }
 
             options.Sound.Update();
-
-            CheckMouseState();
-
             return UpdateResult.None;
         }
 
@@ -580,40 +577,6 @@ namespace ManagedDoom
             {
                 events.Add(new DoomEvent(EventType.KeyUp, (DoomKey) e.Key));
             }
-        }
-
-        private void CheckMouseState()
-        {
-            // bool mouseShouldBeGrabbed;  // TODO: Handle this
-            // if (!window.HasFocus())
-            // {
-            //     mouseShouldBeGrabbed = false;
-            // }
-            // else if (config.video_fullscreen)
-            // {
-            //     mouseShouldBeGrabbed = true;
-            // }
-            // else
-            // {
-            //     mouseShouldBeGrabbed = currentState == ApplicationState.Game && !menu.Active;
-            // }
-            //
-            // if (mouseGrabbed)
-            // {
-            //     if (!mouseShouldBeGrabbed)
-            //     {
-            //         userInput.ReleaseMouse();
-            //         mouseGrabbed = false;
-            //     }
-            // }
-            // else
-            // {
-            //     if (mouseShouldBeGrabbed)
-            //     {
-            //         userInput.GrabMouse();
-            //         mouseGrabbed = true;
-            //     }
-            // }
         }
 
         private void StartWipe()

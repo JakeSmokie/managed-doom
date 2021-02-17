@@ -33,6 +33,9 @@ namespace ManagedDoom.HardwareRendering
             RenderArmor(player, healthOffset);
             RenderAmmo(player);
             RenderKeys(player);
+            
+            DrawNumber(new(500, 500), (int) player.Pitch.ToDegree(), out _);
+            DrawNumber(new(500, 600), (int) player.Mobj.Angle.ToDegree(), out _);
         }
 
         private void RenderKeys(Player player)
