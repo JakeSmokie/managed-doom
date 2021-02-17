@@ -570,7 +570,7 @@ namespace ManagedDoom
                 case "pause":
                     return DoomKey.Pause;
                 default:
-                    return DoomKey.Unknown;
+                    return DoomKey.None;
             }
         }
     }

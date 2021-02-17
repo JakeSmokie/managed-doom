@@ -16,6 +16,7 @@
 
 
 using System;
+using System.IO;
 
 namespace ManagedDoom
 {
@@ -55,5 +56,6 @@ namespace ManagedDoom
         public int Width => patch.Width;
         public int Height => patch.Height;
         public Column[][] Columns => patch.Columns;
+        public Patch Patch => patch;
     }
 }

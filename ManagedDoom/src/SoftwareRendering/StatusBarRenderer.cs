@@ -113,11 +113,11 @@ namespace ManagedDoom.SoftwareRendering
 
         private MultIconWidget[] keys;
 
-        public StatusBarRenderer(Wad wad, DrawScreen screen)
+        public StatusBarRenderer(CommonResource resource, DrawScreen screen)
         {
             this.screen = screen;
 
-            patches = new Patches(wad);
+            patches = new Patches(resource);
 
             scale = screen.Width / 320;
 
@@ -409,9 +409,13 @@ namespace ManagedDoom.SoftwareRendering
             public Patch[] Patches;
         }
 
-        private class Patches
+        public class Patches
         {
             public Patch Background;
+            public Patch Medikit;
+            public Patch ArmorGreen;
+            public Patch ArmorBlue;
+            public Patch[] Ammo;
             public Patch[] TallNumbers;
             public Patch[] ShortNumbers;
             public Patch TallMinus;
@@ -422,40 +426,53 @@ namespace ManagedDoom.SoftwareRendering
             public Patch[] FaceBackground;
             public Patch[] Faces;
 
-            public Patches(Wad wad)
+            public Patches(CommonResource resource)
             {
-                Background = Patch.FromWad(wad, "STBAR");
+                var wad = resource.Wad;
+                var pal = resource.Palette;
+
+                Background = Patch.FromWad(wad, "STBAR", pal);
+                Medikit = Patch.FromWad(wad, "MEDIA0", pal);
+                ArmorGreen = Patch.FromWad(wad, "ARM1A0", pal);
+                ArmorBlue = Patch.FromWad(wad, "ARM2A0", pal);
+                Ammo = new[]
+                {
+                    Patch.FromWad(wad, "CLIPA0", pal),
+                    Patch.FromWad(wad, "SHELA0", pal),
+                    Patch.FromWad(wad, "CELLA0", pal),
+                    Patch.FromWad(wad, "MISLA7A3", pal)
+                };
 
                 TallNumbers = new Patch[10];
                 ShortNumbers = new Patch[10];
                 for (var i = 0; i < 10; i++)
                 {
-                    TallNumbers[i] = Patch.FromWad(wad, "STTNUM" + i);
-                    ShortNumbers[i] = Patch.FromWad(wad, "STYSNUM" + i);
+                    TallNumbers[i] = Patch.FromWad(wad, "STTNUM" + i, pal);
+                    ShortNumbers[i] = Patch.FromWad(wad, "STYSNUM" + i, pal);
                 }
-                TallMinus = Patch.FromWad(wad, "STTMINUS");
-                TallPercent = Patch.FromWad(wad, "STTPRCNT");
+                TallMinus = Patch.FromWad(wad, "STTMINUS", pal);
+                TallPercent = Patch.FromWad(wad, "STTPRCNT", pal);
 
                 Keys = new Patch[(int)CardType.Count];
                 for (var i = 0; i < Keys.Length; i++)
                 {
-                    Keys[i] = Patch.FromWad(wad, "STKEYS" + i);
+                    Keys[i] = Patch.FromWad(wad, "STKEYS" + i, pal);
                 }
 
-                ArmsBackground = Patch.FromWad(wad, "STARMS");
+                ArmsBackground = Patch.FromWad(wad, "STARMS", pal);
                 Arms = new Patch[6][];
                 for (var i = 0; i < 6; i++)
                 {
                     var num = i + 2;
                     Arms[i] = new Patch[2];
-                    Arms[i][0] = Patch.FromWad(wad, "STGNUM" + num);
+                    Arms[i][0] = Patch.FromWad(wad, "STGNUM" + num, pal);
                     Arms[i][1] = ShortNumbers[num];
                 }
 
                 FaceBackground = new Patch[Player.MaxPlayerCount];
                 for (var i = 0; i < FaceBackground.Length; i++)
                 {
-                    FaceBackground[i] = Patch.FromWad(wad, "STFB" + i);
+                    FaceBackground[i] = Patch.FromWad(wad, "STFB" + i, pal);
                 }
                 Faces = new Patch[StatusBar.Face.FaceCount];
                 var faceCount = 0;
@@ -463,16 +480,16 @@ namespace ManagedDoom.SoftwareRendering
                 {
                     for (var j = 0; j < StatusBar.Face.StraightFaceCount; j++)
                     {
-                        Faces[faceCount++] = Patch.FromWad(wad, "STFST" + i + j);
+                        Faces[faceCount++] = Patch.FromWad(wad, "STFST" + i + j, pal);
                     }
-                    Faces[faceCount++] = Patch.FromWad(wad, "STFTR" + i + "0");
-                    Faces[faceCount++] = Patch.FromWad(wad, "STFTL" + i + "0");
-                    Faces[faceCount++] = Patch.FromWad(wad, "STFOUCH" + i);
-                    Faces[faceCount++] = Patch.FromWad(wad, "STFEVL" + i);
-                    Faces[faceCount++] = Patch.FromWad(wad, "STFKILL" + i);
+                    Faces[faceCount++] = Patch.FromWad(wad, "STFTR" + i + "0", pal);
+                    Faces[faceCount++] = Patch.FromWad(wad, "STFTL" + i + "0", pal);
+                    Faces[faceCount++] = Patch.FromWad(wad, "STFOUCH" + i, pal);
+                    Faces[faceCount++] = Patch.FromWad(wad, "STFEVL" + i, pal);
+                    Faces[faceCount++] = Patch.FromWad(wad, "STFKILL" + i, pal);
                 }
-                Faces[faceCount++] = Patch.FromWad(wad, "STFGOD0");
-                Faces[faceCount++] = Patch.FromWad(wad, "STFDEAD0");
+                Faces[faceCount++] = Patch.FromWad(wad, "STFGOD0", pal);
+                Faces[faceCount++] = Patch.FromWad(wad, "STFDEAD0", pal);
             }
         }
     }

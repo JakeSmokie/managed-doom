@@ -29,13 +29,16 @@ namespace ManagedDoom
         private Dictionary<string, int> nameToNumber;
 
         private int[] switchList;
+        private Palette palette;
 
-        public TextureLookup(Wad wad) : this(wad, false)
+        public TextureLookup(Wad wad, Palette palette) : this(wad, false, palette)
         {
         }
 
-        public TextureLookup(Wad wad, bool useDummy)
+        public TextureLookup(Wad wad, bool useDummy, Palette palette)
         {
+            this.palette = palette;
+            
             if (!useDummy)
             {
                 Init(wad);
@@ -73,7 +76,7 @@ namespace ManagedDoom
                     for (var i = 0; i < count; i++)
                     {
                         var offset = BitConverter.ToInt32(data, 4 + 4 * i);
-                        var texture = Texture.FromData(data, offset, patches);
+                        var texture = Texture.FromData(data, offset, patches, palette);
                         nameToNumber.TryAdd(texture.Name, textures.Count);
                         textures.Add(texture);
                         nameToTexture.TryAdd(texture.Name, texture);
@@ -152,7 +155,7 @@ namespace ManagedDoom
             }
         }
 
-        private static Patch[] LoadPatches(Wad wad)
+        private Patch[] LoadPatches(Wad wad)
         {
             var patchNames = LoadPatchNames(wad);
             var patches = new Patch[patchNames.Length];
@@ -167,7 +170,7 @@ namespace ManagedDoom
                 }
 
                 var data = wad.ReadLump(name);
-                patches[i] = Patch.FromData(name, data);
+                patches[i] = Patch.FromData(name, data, palette);
             }
             return patches;
         }

@@ -76,7 +76,7 @@ namespace ManagedDoom
             foreach (var s in split)
             {
                 var key = DoomKeyEx.Parse(s);
-                if (key != DoomKey.Unknown)
+                if (key != DoomKey.None)
                 {
                     keys.Add(key);
                     continue;

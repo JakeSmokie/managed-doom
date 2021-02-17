@@ -7,11 +7,21 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="SFML.Net" Version="2.5.0" />
+    <PackageReference Include="MonoGame.Extended" Version="3.8.0" />
+    <PackageReference Include="MonoGame.Extended.Input" Version="3.8.0" />
+    <PackageReference Include="MonoGame.Extended.Graphics" Version="3.8.0" />
+    <PackageReference Include="MonoGame.Framework.DesktopGL" Version="3.8.0.1641" />
   </ItemGroup>
 
   <ItemGroup>
     <Folder Include="src\Audio\CSharpSynth\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Remove="src\Audio\SfmlMusic.cs" />
+    <None Include="src\Audio\SfmlMusic.cs" />
+    <Compile Remove="src\Audio\SfmlSound.cs" />
+    <None Include="src\Audio\SfmlSound.cs" />
   </ItemGroup>
 
 </Project>

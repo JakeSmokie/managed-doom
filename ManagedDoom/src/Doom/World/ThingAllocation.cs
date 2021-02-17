@@ -129,7 +129,7 @@ namespace ManagedDoom
 
             if (i == DoomInfo.MobjInfos.Length)
             {
-                throw new Exception("Unknown type!");
+                return;
             }
 
             // Don't spawn keycards and players in deathmatch.
@@ -151,13 +151,21 @@ namespace ManagedDoom
             Fixed x = mt.X;
             Fixed y = mt.Y;
             Fixed z;
-            if ((DoomInfo.MobjInfos[i].Flags & MobjFlags.SpawnCeiling) != 0)
+            
+            if (mt.Z != Fixed.Zero)
             {
-                z = Mobj.OnCeilingZ;
+                z = mt.Z;
             }
             else
             {
-                z = Mobj.OnFloorZ;
+                if ((DoomInfo.MobjInfos[i].Flags & MobjFlags.SpawnCeiling) != 0)
+                {
+                    z = Mobj.OnCeilingZ;
+                }
+                else
+                {
+                    z = Mobj.OnFloorZ;
+                }
             }
 
             var mobj = SpawnMobj(x, y, z, (MobjType)i);

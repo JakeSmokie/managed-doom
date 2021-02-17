@@ -17,6 +17,8 @@
 
 using System;
 using System.Collections.Generic;
+using ManagedDoom.HardwareRendering;
+using Microsoft.Xna.Framework;
 
 namespace ManagedDoom.SoftwareRendering
 {
@@ -27,18 +29,21 @@ namespace ManagedDoom.SoftwareRendering
         private ColorMap colorMap;
         private TextureLookup textures;
         private FlatLookup flats;
-        private SpriteLookup sprites;
+        public SpriteLookup sprites;
 
         private DrawScreen screen;
         private int screenWidth;
         private int screenHeight;
         private byte[] screenData;
         private int drawScale;
+        private Mono3DRenderer mono3DRenderer;
 
         private int windowSize;
 
-        public ThreeDRenderer(CommonResource resource, DrawScreen screen, int windowSize)
+        public ThreeDRenderer(GraphicsDeviceManager graphicsDeviceManager, CommonResource resource, DrawScreen screen, int windowSize)
         {
+            mono3DRenderer = new Mono3DRenderer(graphicsDeviceManager, this, resource);
+
             colorMap = resource.ColorMap;
             textures = resource.Textures;
             flats = resource.Flats;
@@ -61,7 +66,7 @@ namespace ManagedDoom.SoftwareRendering
             InitWeaponRendering();
             InitFuzzEffect();
             InitColorTranslation();
-            InitWindowBorder(resource.Wad);
+            InitWindowBorder(resource);
 
             SetWindowSize(windowSize);
         }
@@ -614,16 +619,19 @@ namespace ManagedDoom.SoftwareRendering
         private Patch borderRight;
         private Flat backFlat;
 
-        private void InitWindowBorder(Wad wad)
+        private void InitWindowBorder(CommonResource resource)
         {
-            borderTopLeft = Patch.FromWad(wad, "BRDR_TL");
-            borderTopRight = Patch.FromWad(wad, "BRDR_TR");
-            borderBottomLeft = Patch.FromWad(wad, "BRDR_BL");
-            borderBottomRight = Patch.FromWad(wad, "BRDR_BR");
-            borderTop = Patch.FromWad(wad, "BRDR_T");
-            borderBottom = Patch.FromWad(wad, "BRDR_B");
-            borderLeft = Patch.FromWad(wad, "BRDR_L");
-            borderRight = Patch.FromWad(wad, "BRDR_R");
+            var wad = resource.Wad;
+            var pal = resource.Palette;
+
+            borderTopLeft = Patch.FromWad(wad, "BRDR_TL", pal);
+            borderTopRight = Patch.FromWad(wad, "BRDR_TR", pal);
+            borderBottomLeft = Patch.FromWad(wad, "BRDR_BL", pal);
+            borderBottomRight = Patch.FromWad(wad, "BRDR_BR", pal);
+            borderTop = Patch.FromWad(wad, "BRDR_T", pal);
+            borderBottom = Patch.FromWad(wad, "BRDR_B", pal);
+            borderLeft = Patch.FromWad(wad, "BRDR_L", pal);
+            borderRight = Patch.FromWad(wad, "BRDR_R", pal);
 
             if (wad.GameMode == GameMode.Commercial)
             {
@@ -693,7 +701,7 @@ namespace ManagedDoom.SoftwareRendering
         // Camera view
         ////////////////////////////////////////////////////////////
 
-        private World world;
+        public World World;
 
         private Fixed viewX;
         private Fixed viewY;
@@ -706,10 +714,15 @@ namespace ManagedDoom.SoftwareRendering
         private int validCount;
 
 
+        public void RenderMono()
+        {
+            mono3DRenderer.Render();
+        }
 
         public void Render(Player player)
         {
-            world = player.Mobj.World;
+            World = player.Mobj.World;
+            mono3DRenderer.SetProjection(player);
 
             viewX = player.Mobj.X;
             viewY = player.Mobj.Y;
@@ -719,7 +732,7 @@ namespace ManagedDoom.SoftwareRendering
             viewSin = Trig.Sin(viewAngle);
             viewCos = Trig.Cos(viewAngle);
 
-            validCount = world.GetNewValidCount();
+            validCount = World.GetNewValidCount();
 
             extraLight = player.ExtraLight;
             fixedColorMap = player.FixedColorMap;
@@ -729,7 +742,7 @@ namespace ManagedDoom.SoftwareRendering
             ClearRenderingHistory();
             ClearSpriteRendering();
 
-            RenderBspNode(world.Map.Nodes.Length - 1);
+            RenderBspNode(World.Map.Nodes.Length - 1);
             RenderSprites();
             RenderMaskedTextures();
             DrawPlayerSprites(player);
@@ -738,6 +751,8 @@ namespace ManagedDoom.SoftwareRendering
             {
                 FillBackScreen();
             }
+            
+            RenderHud(player, false);
         }
 
 
@@ -757,7 +772,7 @@ namespace ManagedDoom.SoftwareRendering
                 return;
             }
 
-            var bsp = world.Map.Nodes[node];
+            var bsp = World.Map.Nodes[node];
 
             // Decide which side the view point is on.
             var side = Geometry.PointOnSide(viewX, viewY, bsp);
@@ -765,6 +780,11 @@ namespace ManagedDoom.SoftwareRendering
             // Recursively divide front space.
             RenderBspNode(bsp.Children[side]);
 
+            if (node == 1740)
+            {
+                ;
+            }
+            
             // Possibly divide back space.
             if (IsPotentiallyVisible(bsp.BoundingBox[side ^ 1]))
             {
@@ -776,13 +796,14 @@ namespace ManagedDoom.SoftwareRendering
 
         private void DrawSubsector(int subsector)
         {
-            var target = world.Map.Subsectors[subsector];
+            var target = World.Map.Subsectors[subsector];
 
+            mono3DRenderer.DrawSubsector(target);
             AddSprites(target.Sector, validCount);
 
             for (var i = 0; i < target.SegCount; i++)
             {
-                DrawSeg(world.Map.Segs[target.FirstSeg + i]);
+                DrawSeg(World.Map.Segs[target.FirstSeg + i]);
             }
         }
 
@@ -802,6 +823,7 @@ namespace ManagedDoom.SoftwareRendering
             new[] { 2, 1, 3, 1 },
             new[] { 2, 1, 3, 0 }
         };
+
 
         private bool IsPotentiallyVisible(Fixed[] bbox)
         {
@@ -868,7 +890,7 @@ namespace ManagedDoom.SoftwareRendering
                 // Totally off the left edge?
                 if (tSpan1 >= span)
                 {
-                    return false;
+                    // return false;
                 }
 
                 angle1 = clipAngle;
@@ -882,7 +904,7 @@ namespace ManagedDoom.SoftwareRendering
                 // Totally off the left edge?
                 if (tSpan2 >= span)
                 {
-                    return false;
+                    // return false;
                 }
 
                 angle2 = -clipAngle;
@@ -1022,6 +1044,8 @@ namespace ManagedDoom.SoftwareRendering
 
         private void DrawSolidWall(Seg seg, Angle rwAngle1, int x1, int x2)
         {
+            mono3DRenderer.DrawSolidWall(seg);
+            
             int next;
             int start;
 
@@ -1110,6 +1134,7 @@ namespace ManagedDoom.SoftwareRendering
 
         private void DrawPassWall(Seg seg, Angle rwAngle1, int x1, int x2)
         {
+            mono3DRenderer.DrawPassWall(seg);
             int start;
 
             // Find the first range that touches the range
@@ -1216,7 +1241,7 @@ namespace ManagedDoom.SoftwareRendering
             var worldFrontZ2 = frontSector.FloorHeight - viewZ;
 
             // Check which parts must be rendered.
-            var drawWall = side.MiddleTexture != 0;
+            var drawWall = side.MiddleTexture > 0;
             var drawCeiling = worldFrontZ1 > Fixed.Zero || frontSector.CeilingFlat == flats.SkyFlatNumber;
             var drawFloor = worldFrontZ2 < Fixed.Zero;
 
@@ -1224,7 +1249,8 @@ namespace ManagedDoom.SoftwareRendering
             // Determine how the wall textures are vertically aligned.
             //
 
-            var wallTexture = textures[world.Specials.TextureTranslation[side.MiddleTexture]];
+            var index = side.MiddleTexture == -1 ? 0 : side.MiddleTexture;
+            var wallTexture = textures[World.Specials.TextureTranslation[index]];
             var wallWidthMask = wallTexture.Width - 1;
 
             Fixed middleTextureAlt;
@@ -1358,8 +1384,8 @@ namespace ManagedDoom.SoftwareRendering
             // Floor and ceiling.
             //
 
-            var ceilingFlat = flats[world.Specials.FlatTranslation[frontSector.CeilingFlat]];
-            var floorFlat = flats[world.Specials.FlatTranslation[frontSector.FloorFlat]];
+            var ceilingFlat = flats[World.Specials.FlatTranslation[frontSector.CeilingFlat]];
+            var floorFlat = flats[World.Specials.FlatTranslation[frontSector.FloorFlat]];
 
             //
             // Now the rendering is carried out.
@@ -1510,7 +1536,7 @@ namespace ManagedDoom.SoftwareRendering
             var uperTextureAlt = default(Fixed);
             if (drawUpperWall)
             {
-                upperWallTexture = textures[world.Specials.TextureTranslation[side.TopTexture]];
+                upperWallTexture = textures[World.Specials.TextureTranslation[side.TopTexture]];
                 upperWallWidthMask = upperWallTexture.Width - 1;
 
                 if ((line.Flags & LineFlags.DontPegTop) != 0)
@@ -1530,7 +1556,8 @@ namespace ManagedDoom.SoftwareRendering
             var lowerTextureAlt = default(Fixed);
             if (drawLowerWall)
             {
-                lowerWallTexture = textures[world.Specials.TextureTranslation[side.BottomTexture]];
+                var index = side.BottomTexture >= World.Specials.TextureTranslation.Length || side.BottomTexture < 0 ? 0 : side.BottomTexture;
+                lowerWallTexture = textures[World.Specials.TextureTranslation[index]];
                 lowerWallWidthMask = lowerWallTexture.Width - 1;
 
                 if ((line.Flags & LineFlags.DontPegBottom) != 0)
@@ -1751,8 +1778,8 @@ namespace ManagedDoom.SoftwareRendering
             // Floor and ceiling.
             //
 
-            var ceilingFlat = flats[world.Specials.FlatTranslation[frontSector.CeilingFlat]];
-            var floorFlat = flats[world.Specials.FlatTranslation[frontSector.FloorFlat]];
+            var ceilingFlat = flats[World.Specials.FlatTranslation[frontSector.CeilingFlat]];
+            var floorFlat = flats[World.Specials.FlatTranslation[frontSector.FloorFlat]];
 
             //
             // Now the rendering is carried out.
@@ -1934,7 +1961,7 @@ namespace ManagedDoom.SoftwareRendering
 
             var wallLights = scaleLight[Math.Clamp(wallLightLevel, 0, lightLevelCount - 1)];
 
-            var wallTexture = textures[world.Specials.TextureTranslation[seg.SideDef.MiddleTexture]];
+            var wallTexture = textures[World.Specials.TextureTranslation[seg.SideDef.MiddleTexture]];
             var mask = wallTexture.Width - 1;
 
             Fixed midTextureAlt;
@@ -1967,16 +1994,20 @@ namespace ManagedDoom.SoftwareRendering
                     var invScale = new Fixed((int)(0xffffffffu / (uint)scale.Data));
                     var ceilClip = clipData[drawSeg.UpperClip + x];
                     var floorClip = clipData[drawSeg.LowerClip + x];
-                    DrawMaskedColumn(
-                        wallTexture.Composite.Columns[col & mask],
-                        wallLights[index],
-                        x,
-                        topY,
-                        scale,
-                        invScale,
-                        midTextureAlt,
-                        ceilClip,
-                        floorClip);
+                    
+                    // if (x % 2 == 0)
+                    {
+                        DrawMaskedColumn(
+                            wallTexture.Composite.Columns[col & mask],
+                            wallLights[index],
+                            x,
+                            topY,
+                            scale,
+                            invScale,
+                            midTextureAlt,
+                            ceilClip,
+                            floorClip);
+                    }
 
                     clipData[drawSeg.MaskedTextureColumn + x] = short.MaxValue;
                 }
@@ -2032,7 +2063,7 @@ namespace ManagedDoom.SoftwareRendering
 
                     var colorMap = planeLights[Math.Min((uint)(distance.Data >> zLightShift), maxZLight - 1)];
                     ceilingLights[y] = colorMap;
-
+ 
                     var spot = ((yFrac.Data >> (16 - 6)) & (63 * 64)) + ((xFrac.Data >> 16) & 63);
                     screenData[pos] = colorMap[flatData[spot]];
                     pos++;
@@ -2339,8 +2370,8 @@ namespace ManagedDoom.SoftwareRendering
         private void DrawSkyColumn(int x, int y1, int y2)
         {
             var angle = (viewAngle + xToAngle[x]).Data >> angleToSkyShift;
-            var mask = world.Map.SkyTexture.Width - 1;
-            var source = world.Map.SkyTexture.Composite.Columns[angle & mask];
+            var mask = World.Map.SkyTexture.Width - 1;
+            var source = World.Map.SkyTexture.Composite.Columns[angle & mask];
             DrawColumn(source[0], colorMap[0], x, y1, y2, skyInvScale, skyTextureAlt);
         }
 
@@ -2532,6 +2563,7 @@ namespace ManagedDoom.SoftwareRendering
             var vis = visSprites[visSpriteCount];
             visSpriteCount++;
 
+            vis.Thing = thing;
             vis.MobjFlags = thing.Flags;
             vis.Scale = xScale;
             vis.GlobalX = thing.X;
@@ -2541,6 +2573,7 @@ namespace ManagedDoom.SoftwareRendering
             vis.TextureAlt = vis.GlobalTopZ - viewZ;
             vis.X1 = x1 < 0 ? 0 : x1;
             vis.X2 = x2 >= windowWidth ? windowWidth - 1 : x2;
+            vis.Flip = flip;
 
             var invScale = Fixed.One / xScale;
 
@@ -2585,6 +2618,7 @@ namespace ManagedDoom.SoftwareRendering
 
             for (var i = visSpriteCount - 1; i >= 0; i--)
             {
+                mono3DRenderer.DrawSprite(visSprites[i]);
                 DrawSprite(visSprites[i]);
             }
         }
@@ -2929,6 +2963,7 @@ namespace ManagedDoom.SoftwareRendering
                 var psp = player.PlayerSprites[i];
                 if (psp.State != null)
                 {
+                    mono3DRenderer.DrawPlayerSprite(psp, spriteLights, fuzz);
                     DrawPlayerSprite(psp, spriteLights, fuzz);
                 }
             }
@@ -2964,7 +2999,7 @@ namespace ManagedDoom.SoftwareRendering
             }
         }
 
-        private class VisWallRange
+        public class VisWallRange
         {
             public Seg Seg;
 
@@ -2985,14 +3020,14 @@ namespace ManagedDoom.SoftwareRendering
         }
 
         [Flags]
-        private enum Silhouette
+        public enum Silhouette
         {
             Upper = 1,
             Lower = 2,
             Both = 3
         }
 
-        private class VisSprite
+        public class VisSprite
         {
             public int X1;
             public int X2;
@@ -3020,6 +3055,8 @@ namespace ManagedDoom.SoftwareRendering
             public byte[] ColorMap;
 
             public MobjFlags MobjFlags;
+            public Mobj Thing;
+            public bool Flip;
         }
 
         private class VisSpriteComparer : IComparer<VisSprite>
@@ -3028,6 +3065,11 @@ namespace ManagedDoom.SoftwareRendering
             {
                 return y.Scale.Data - x.Scale.Data;
             }
+        }
+
+        public void RenderHud(Player player, bool drawBackground)
+        {
+            mono3DRenderer.RenderHud(player, drawBackground);
         }
     }
 }

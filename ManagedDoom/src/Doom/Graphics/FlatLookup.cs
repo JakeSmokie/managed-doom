@@ -18,12 +18,14 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.IO;
 using System.Runtime.ExceptionServices;
 
 namespace ManagedDoom
 {
     public sealed class FlatLookup : IReadOnlyList<Flat>
     {
+        private readonly Palette palette;
         private Flat[] flats;
 
         private Dictionary<string, Flat> nameToFlat;
@@ -32,12 +34,14 @@ namespace ManagedDoom
         private int skyFlatNumber;
         private Flat skyFlat;
 
-        public FlatLookup(Wad wad) : this(wad, false)
+        public FlatLookup(Wad wad, Palette palette) : this(wad, false, palette)
         {
         }
 
-        public FlatLookup(Wad wad, bool useDummy)
+        public FlatLookup(Wad wad, bool useDummy, Palette palette)
         {
+            this.palette = palette;
+
             if (!useDummy)
             {
                 var fStartCount = CountLump(wad, "F_START");
@@ -106,7 +110,7 @@ namespace ManagedDoom
 
                     var number = lump - firstFlat;
                     var name = wad.LumpInfos[lump].Name;
-                    var flat = new Flat(name, wad.ReadLump(lump));
+                    var flat = new Flat(name, wad.ReadLump(lump), palette);
 
                     flats[number] = flat;
                     nameToFlat[name] = flat;
@@ -184,7 +188,7 @@ namespace ManagedDoom
                     }
 
                     var name = wad.LumpInfos[lump].Name;
-                    var flat = new Flat(name, wad.ReadLump(lump));
+                    var flat = new Flat(name, wad.ReadLump(lump), palette);
 
                     flats[number] = flat;
                     nameToFlat[name] = flat;

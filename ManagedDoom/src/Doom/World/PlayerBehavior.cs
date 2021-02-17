@@ -14,8 +14,8 @@
 //
 
 
-
 using System;
+using Microsoft.Xna.Framework.Input;
 
 namespace ManagedDoom
 {
@@ -253,20 +253,39 @@ namespace ManagedDoom
         public void MovePlayer(Player player)
         {
             var cmd = player.Cmd;
-
+            
             player.Mobj.Angle += new Angle(cmd.AngleTurn << 16);
+            player.Pitch += new Angle(cmd.Pitch << 16);
+
+            var ang90 = Angle.FromDegree(89);
+            var ang270 = Angle.FromDegree(271);
+
+            if (player.Pitch > ang90 && player.Pitch < Angle.Ang180)
+            {
+                player.Pitch = ang90;
+            }
+
+            if (player.Pitch < ang270 && player.Pitch > Angle.Ang180)
+            {
+                player.Pitch = ang270;
+            }
 
             // Do not let the player control movement if not onground.
             onGround = (player.Mobj.Z <= player.Mobj.FloorZ);
 
-            if (cmd.ForwardMove != 0 && onGround)
+            if (Keyboard.GetState().IsKeyDown(Keys.E))
+            {
+                player.Mobj.MomZ += Fixed.FromInt(8);
+            }
+
+            if (cmd.ForwardMove != 0)
             {
                 Thrust(player, player.Mobj.Angle, new Fixed(cmd.ForwardMove * 2048));
             }
 
-            if (cmd.SideMove != 0 && onGround)
+            if (cmd.SideMove != 0)
             {
-                Thrust(player, player.Mobj.Angle - Angle.Ang90, new Fixed(cmd.SideMove * 2048));
+                Thrust(player, player.Mobj.Angle - ang90, new Fixed(cmd.SideMove * 2048));
             }
 
             if ((cmd.ForwardMove != 0 || cmd.SideMove != 0) &&
@@ -433,7 +452,7 @@ namespace ManagedDoom
                     break;
 
                 default:
-                    throw new Exception("Unknown sector special: " + (int)sector.Special);
+                    break;
             }
         }
 

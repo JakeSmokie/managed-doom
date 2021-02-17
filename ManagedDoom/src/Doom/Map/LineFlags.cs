@@ -30,6 +30,9 @@ namespace ManagedDoom
         Secret = 32,
         SoundBlock = 64,
         DontDraw = 128,
-        Mapped = 256
+        Mapped = 256,
+        RepeatableAction = 512,
+        MonsterActivates = 8192,
+        BlockEverything = 32768
     }
 }

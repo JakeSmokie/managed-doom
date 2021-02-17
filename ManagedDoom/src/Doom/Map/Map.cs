@@ -14,15 +14,26 @@
 //
 
 
-
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Runtime.ExceptionServices;
+using ManagedDoom.Extensions;
+using Microsoft.Xna.Framework;
+using MonoGame.Extended;
+using MonoGame.Extended.Collections;
+using MonoGame.Extended.Shapes;
 
 namespace ManagedDoom
 {
     public sealed class Map
     {
+        private struct Split
+        {
+            public Vector2 Pos;
+            public Vector2 Delta;
+        }
+
         private TextureLookup textures;
         private FlatLookup flats;
         private TextureAnimation animation;
@@ -70,6 +81,7 @@ namespace ManagedDoom
                     name = "E" + options.Episode + "M" + options.Map;
                 }
 
+                Name = name;
                 Console.Write("Load map '" + name + "': ");
 
                 var map = wad.GetLumpNumber(name);
@@ -90,6 +102,7 @@ namespace ManagedDoom
                 blockMap = BlockMap.FromWad(wad, map + 10, lines);
                 reject = Reject.FromWad(wad, map + 9, sectors);
 
+                RecursiveBuildSubsectorPoly(new Stack<Split>(nodes.Length / 2 + 1), nodes.Length - 1);
                 GroupLines();
 
                 skyTexture = GetSkyTextureByMapName(name);
@@ -121,6 +134,147 @@ namespace ManagedDoom
                 Console.WriteLine("Failed");
                 ExceptionDispatchInfo.Throw(e);
             }
+        }
+
+        public string Name { get; set; }
+
+        private void RecursiveBuildSubsectorPoly(Stack<Split> splits, int nodeIndex)
+        {
+            var node = nodes[nodeIndex];
+            var point = node.SplitPoint;
+            var delta = node.SplitDelta;
+
+            for (var i = node.Children.Length - 1; i >= 0; i--)
+            {
+                splits.Push(new Split { Pos = point, Delta = i == 0 ? delta : -delta });
+                var child = node.Children[i];
+
+                if (Node.IsSubsector(child))
+                {
+                    BuildSubsectorPoly(splits, Node.GetSubsector(child));
+                }
+                else
+                {
+                    RecursiveBuildSubsectorPoly(splits, child);
+                }
+
+                splits.Pop();
+            }
+        }
+
+        private void BuildSubsectorPoly(IEnumerable<Split> splits, int subsectorIndex)
+        {
+            const int maxCoordinate = 32767;
+            const int minCoordinate = -32768;
+            var poly = new List<Vector2>(16)
+            {
+                new(minCoordinate, maxCoordinate),
+                new(maxCoordinate, maxCoordinate),
+                new(maxCoordinate, minCoordinate),
+                new(minCoordinate, minCoordinate) // TODO: Replace with MaxCoordinate for each map format
+            };
+
+            foreach (var s in splits)
+            {
+                CropPolygon(poly, s);
+            }
+
+            var subsector = subsectors[subsectorIndex];
+            foreach (var seg in new ReadOnlySpan<Seg>(segs, subsector.FirstSeg, subsector.SegCount))
+            {
+                var v1 = seg.Vertex1.ToVector2();
+                var v2 = seg.Vertex2.ToVector2();
+
+                CropPolygon(poly, new Split { Pos = v1, Delta = v2 - v1 });
+            }
+
+            if (poly.Count > 1)
+            {
+                // Remove any zero-length lines
+                var prev = poly[0];
+                for (var i = poly.Count - 1; i >= 0; i--)
+                {
+                    if (Vector2.DistanceSquared(poly[i], prev) < 0.001f)
+                    {
+                        poly.RemoveAt(i);
+                    }
+                    else
+                    {
+                        prev = poly[i];
+                    }
+                }
+            }
+
+            subsector.Points = poly.Count >= 3 ? poly.ToArray() : null;
+        }
+
+        private void CropPolygon(List<Vector2> poly, Split split)
+        {
+            if (poly.Count == 0)
+            {
+                return;
+            }
+
+            var prev = poly[^1];
+            var side1 = (prev.Y - split.Pos.Y) * split.Delta.X - (prev.X - split.Pos.X) * split.Delta.Y;
+            var newPoly = new List<Vector2>(poly.Count);
+            const float epsilon = 0.00001f;
+
+            foreach (var cur in poly)
+            {
+                var side2 = (cur.Y - split.Pos.Y) * split.Delta.X - (cur.X - split.Pos.X) * split.Delta.Y;
+
+                // Front?
+                if (side2 < -epsilon)
+                {
+                    if (side1 > epsilon)
+                    {
+                        GeometryHelper.GetLineIntersection(
+                            split.Pos,
+                            split.Pos + split.Delta,
+                            prev,
+                            cur,
+                            out var u,
+                            false
+                        );
+
+                        var point = prev + (cur - prev) * u;
+                        newPoly.Add(point);
+                    }
+
+                    newPoly.Add(cur);
+                }
+                // Back?
+                else if (side2 > epsilon)
+                {
+                    if (side1 < -epsilon)
+                    {
+                        GeometryHelper.GetLineIntersection(
+                            split.Pos,
+                            split.Pos + split.Delta,
+                            prev,
+                            cur,
+                            out var u,
+                            false
+                        );
+
+                        var point = prev + (cur - prev) * u;
+                        newPoly.Add(point);
+                    }
+                }
+                else
+                {
+                    // On the plane
+                    newPoly.Add(cur);
+                }
+
+                // Next
+                prev = cur;
+                side1 = side2;
+            }
+
+            poly.Clear();
+            poly.AddRange(newPoly);
         }
 
         private void GroupLines()
@@ -236,7 +390,6 @@ namespace ManagedDoom
         public string Title => title;
 
 
-
         private static readonly Bgm[] e4BgmList = new Bgm[]
         {
             Bgm.E3M4, // American   e4m1
@@ -247,7 +400,7 @@ namespace ManagedDoom
             Bgm.E2M4, // Romero     e4m6
             Bgm.E2M6, // J.Anderson e4m7 CHIRON.WAD
             Bgm.E2M5, // Shawn      e4m8
-            Bgm.E1M9  // Tim        e4m9
+            Bgm.E1M9 // Tim        e4m9
         };
 
         public static Bgm GetMapBgm(GameOptions options)

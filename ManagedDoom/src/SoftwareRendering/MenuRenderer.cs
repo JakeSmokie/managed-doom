@@ -29,12 +29,12 @@ namespace ManagedDoom.SoftwareRendering
 
         private PatchCache cache;
 
-        public MenuRenderer(Wad wad, DrawScreen screen)
+        public MenuRenderer(Wad wad, DrawScreen screen, Palette palette)
         {
             this.wad = wad;
             this.screen = screen;
 
-            cache = new PatchCache(wad);
+            cache = new PatchCache(wad, palette);
         }
 
         public void Render(DoomMenu menu)

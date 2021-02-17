@@ -49,7 +49,7 @@ namespace ManagedDoom
                     columns[x] = x / 32 % 2 == 0 ? c1 : c2;
                 }
 
-                dummyPatch = new Patch("DUMMY", width, height, 32, 128, columns);
+                dummyPatch = new Patch("DUMMY", width, height, 32, 128, columns, null);
 
                 return dummyPatch;
             }
@@ -69,7 +69,7 @@ namespace ManagedDoom
             {
                 var patch = new TexturePatch[] { new TexturePatch(0, 0, GetPatch()) };
 
-                dummyTextures.Add(height, new Texture("DUMMY", false, 64, height, patch));
+                dummyTextures.Add(height, new Texture("DUMMY", false, 64, height, patch, null));
 
                 return dummyTextures[height];
             }
@@ -98,7 +98,7 @@ namespace ManagedDoom
                     }
                 }
 
-                dummyFlat = new Flat("DUMMY", data);
+                dummyFlat = new Flat("DUMMY", data, null);
 
                 return dummyFlat;
             }
@@ -116,7 +116,7 @@ namespace ManagedDoom
             }
             else
             {
-                dummySkyFlat = new Flat("DUMMY", GetFlat().Data);
+                dummySkyFlat = new Flat("DUMMY", GetFlat().Data, null);
 
                 return dummySkyFlat;
             }

@@ -14,9 +14,10 @@
 //
 
 
-
 using System;
 using System.Collections.Generic;
+using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework.Graphics;
 
 namespace ManagedDoom
 {
@@ -28,14 +29,15 @@ namespace ManagedDoom
         private int leftOffset;
         private int topOffset;
         private Column[][] columns;
+        private Texture2D texture2D;
 
-        public Patch(
-            string name,
+        public Patch(string name,
             int width,
             int height,
             int leftOffset,
             int topOffset,
-            Column[][] columns)
+            Column[][] columns,
+            Texture2D texture2D)
         {
             this.name = name;
             this.width = width;
@@ -43,9 +45,10 @@ namespace ManagedDoom
             this.leftOffset = leftOffset;
             this.topOffset = topOffset;
             this.columns = columns;
+            this.texture2D = texture2D;
         }
 
-        public static Patch FromData(string name, byte[] data)
+        public static Patch FromData(string name, byte[] data, Palette palette = null)
         {
             var width = BitConverter.ToInt16(data, 0);
             var height = BitConverter.ToInt16(data, 2);
@@ -66,12 +69,21 @@ namespace ManagedDoom
                     {
                         break;
                     }
+
                     var length = data[p + 1];
                     var offset = p + 3;
                     cs.Add(new Column(topDelta, data, offset, length));
                     p += length + 4;
                 }
+
                 columns[x] = cs.ToArray();
+            }
+
+            Texture2D texture2D = null;
+
+            if (palette != null)
+            {
+                texture2D = LoadTexture(palette, width, height, columns);
             }
 
             return new Patch(
@@ -80,12 +92,43 @@ namespace ManagedDoom
                 height,
                 leftOffset,
                 topOffset,
-                columns);
+                columns,
+                texture2D);
         }
 
-        public static Patch FromWad(Wad wad, string name)
+        public static Texture2D LoadTexture(Palette palettes, int width, int height, Column[][] columns)
         {
-            return FromData(name, wad.ReadLump(name));
+            var palette = palettes[0];
+            var dataLength = width * height;
+            var image = new Color[dataLength];
+
+            for (var x = 0; x < width; x++)
+            {
+                foreach (var column in columns[x])
+                {
+                    for (var y = 0; y < column.Length; y++)
+                    {
+                        var pixel = (column.TopDelta + y) * width + x;
+
+                        if (pixel >= image.Length)
+                        {
+                            continue;
+                        }
+
+                        image[pixel].PackedValue = palette[column.Data[column.Offset + y]];
+                    }
+                }
+            }
+
+            var texture2D = new Texture2D(DoomApplication.StaticGraphicsDevice, width, height);
+            texture2D.SetData(image);
+
+            return texture2D;
+        }
+
+        public static Patch FromWad(Wad wad, string name, Palette palette)
+        {
+            return FromData(name, wad.ReadLump(name), palette);
         }
 
         private static void PadData(ref byte[] data, int width)
@@ -101,6 +144,7 @@ namespace ManagedDoom
                     {
                         break;
                     }
+
                     var length = data[p + 1];
                     var offset = p + 3;
                     need = Math.Max(offset + 128, need);
@@ -125,5 +169,6 @@ namespace ManagedDoom
         public int LeftOffset => leftOffset;
         public int TopOffset => topOffset;
         public Column[][] Columns => columns;
+        public Texture2D Texture2D => texture2D;
     }
 }

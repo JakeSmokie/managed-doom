@@ -519,5 +519,7 @@ namespace ManagedDoom
             get => didSecret;
             set => didSecret = value;
         }
+
+        public Angle Pitch { get; set; }
     }
 }

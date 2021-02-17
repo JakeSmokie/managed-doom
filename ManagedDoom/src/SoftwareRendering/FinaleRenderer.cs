@@ -30,7 +30,7 @@ namespace ManagedDoom.SoftwareRendering
 
         private PatchCache cache;
 
-        public FinaleRenderer(CommonResource resource, DrawScreen screen)
+        public FinaleRenderer(CommonResource resource, DrawScreen screen, Palette palette)
         {
             wad = resource.Wad;
             flats = resource.Flats;
@@ -39,7 +39,7 @@ namespace ManagedDoom.SoftwareRendering
             this.screen = screen;
             scale = screen.Width / 320;
 
-            cache = new PatchCache(wad);
+            cache = new PatchCache(wad, palette);
         }
 
         public void Render(Finale finale)
