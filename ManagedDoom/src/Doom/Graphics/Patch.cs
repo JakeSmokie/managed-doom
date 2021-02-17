@@ -126,7 +126,7 @@ namespace ManagedDoom
             return texture2D;
         }
 
-        public static Patch FromWad(Wad wad, string name, Palette palette = null)
+        public static Patch FromWad(Wad wad, string name, Palette palette)
         {
             return FromData(name, wad.ReadLump(name), palette);
         }

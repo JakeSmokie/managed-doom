@@ -60,7 +60,6 @@ namespace ManagedDoom.SoftwareRendering
 
         private MenuRenderer menu;
         private ThreeDRenderer threeD;
-        private StatusBarRenderer statusBar;
         private IntermissionRenderer intermission;
         private OpeningSequenceRenderer openingSequence;
         private AutoMapRenderer autoMap;
@@ -119,13 +118,12 @@ namespace ManagedDoom.SoftwareRendering
 
                 menu = new MenuRenderer(resource.Wad, screen, resource.Palette);
                 threeD = new ThreeDRenderer(graphics, resource, screen, config.video_gamescreensize);
-                statusBar = new StatusBarRenderer(resource.Wad, screen);
                 intermission = new IntermissionRenderer(resource.Wad, screen, resource.Palette);
                 openingSequence = new OpeningSequenceRenderer(resource.Wad, screen, this, resource.Palette);
-                autoMap = new AutoMapRenderer(resource.Wad, screen);
+                autoMap = new AutoMapRenderer(resource, screen);
                 finale = new FinaleRenderer(resource, screen, resource.Palette);
 
-                pause = Patch.FromWad(resource.Wad, "M_PAUSE");
+                pause = Patch.FromWad(resource.Wad, "M_PAUSE", resource.Palette);
 
                 var scale = screen.Width / 320;
                 wipeBandWidth = 2 * scale;
@@ -194,19 +192,11 @@ namespace ManagedDoom.SoftwareRendering
                 if (game.World.AutoMap.Visible)
                 {
                     autoMap.Render(consolePlayer);
-                    statusBar.Render(consolePlayer, true);
+                    threeD.RenderHud(consolePlayer, true);
                 }
                 else
                 {
                     threeD.Render(displayPlayer);
-                    if (threeD.WindowSize < 8)
-                    {
-                        statusBar.Render(consolePlayer, true);
-                    }
-                    else if (threeD.WindowSize == ThreeDRenderer.MaxScreenSize)
-                    {
-                        statusBar.Render(consolePlayer, false);
-                    }
                 }
 
                 if (config.video_displaymessage || ReferenceEquals(consolePlayer.Message, (string) DoomInfo.Strings.MSGOFF))

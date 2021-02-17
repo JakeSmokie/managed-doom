@@ -6,7 +6,7 @@ using Microsoft.Xna.Framework.Graphics;
 
 namespace ManagedDoom.HardwareRendering
 {
-    public class MonoRenderer
+    public class Mono3DRenderer
     {
         private struct RenderMesh
         {
@@ -17,11 +17,23 @@ namespace ManagedDoom.HardwareRendering
             public int IndicesCount;
             public float Alpha;
             public bool Sprite;
+            public Matrix? View;
+            public Matrix? World;
         }
 
-        private readonly GraphicsDeviceManager graphicsDeviceManager;
+        public struct RenderSprite
+        {
+            public Texture2D Texture2D;
+            public Vector2 Position;
+            public float Scale;
+        }
+
+        private static readonly Matrix ViewXY = Matrix.CreateLookAt(Vector3.Zero, Vector3.Forward * 50, Vector3.Up);
+        private static readonly Matrix WorldXY = Matrix.CreateWorld(Vector3.Forward * 50, Vector3.Forward, Vector3.Up);
+
+        private readonly MonoHudRenderer monoHudRenderer;
         private readonly ThreeDRenderer threeDRenderer;
-        private readonly CommonResource commonResource;
+        private readonly CommonResource resource;
         private readonly GraphicsDevice graphicsDevice;
 
         private Vector3 camPosition = new Vector3(9856, 105, -256);
@@ -39,6 +51,7 @@ namespace ManagedDoom.HardwareRendering
         private readonly VertexPositionColorTexture[] triangleVertices = new VertexPositionColorTexture[40000];
         private readonly int[] triangleIndices = new int[60000];
         private readonly RenderMesh[] meshes = new RenderMesh[60000];
+        private readonly RenderSprite[] sprites = new RenderSprite[1000];
 
         private readonly BasicEffect basicEffect;
         private readonly AlphaTestEffect alphaMaskEffect;
@@ -66,12 +79,15 @@ namespace ManagedDoom.HardwareRendering
         private int vertexesAmount;
         private int indicesAmount;
         private int meshesAmount;
+        private int spritesAmount;
 
-        public MonoRenderer(GraphicsDeviceManager graphicsDeviceManager, ThreeDRenderer threeDRenderer, CommonResource commonResource)
+
+        public Mono3DRenderer(GraphicsDeviceManager graphicsDeviceManager, ThreeDRenderer threeDRenderer, CommonResource resource)
         {
-            this.graphicsDeviceManager = graphicsDeviceManager;
+            monoHudRenderer = new MonoHudRenderer(this, resource, graphicsDeviceManager.GraphicsDevice);
+
             this.threeDRenderer = threeDRenderer;
-            this.commonResource = commonResource;
+            this.resource = resource;
 
             graphicsDevice = graphicsDeviceManager.GraphicsDevice;
             projectionMatrix = Matrix.CreatePerspectiveFieldOfView(MathHelper.ToRadians(65f), graphicsDevice.Viewport.AspectRatio, 1f, 10000f);
@@ -96,11 +112,15 @@ namespace ManagedDoom.HardwareRendering
 
         public void SetProjection(Player player)
         {
+            graphicsDevice.Clear(Color.Aqua);
+            Frame++;
+
             this.player = player;
 
             vertexesAmount = 0;
             indicesAmount = 0;
             meshesAmount = 0;
+            spritesAmount = 0;
 
             var viewX = player.Mobj.X.ToFloat();
             var viewY = player.Mobj.Y.ToFloat();
@@ -111,14 +131,6 @@ namespace ManagedDoom.HardwareRendering
             camTarget = camPosition + new Vector3(-MathF.Cos((float) viewAngle), 0, MathF.Sin((float) viewAngle));
             viewMatrix = Matrix.CreateLookAt(camPosition, camTarget, Vector3.Up);
             worldMatrix = Matrix.CreateWorld(Vector3.Zero, Vector3.Forward, Vector3.Up);
-
-            basicEffect.Projection = projectionMatrix;
-            basicEffect.View = viewMatrix;
-            basicEffect.World = worldMatrix;
-
-            alphaMaskEffect.Projection = projectionMatrix;
-            alphaMaskEffect.View = viewMatrix;
-            alphaMaskEffect.World = worldMatrix;
         }
 
         private static bool Drawn = false;
@@ -126,10 +138,9 @@ namespace ManagedDoom.HardwareRendering
 
         public void Render()
         {
-            graphicsDevice.Clear(Color.Aqua);
-            Frame++;
-
-            var random = new Random(Frame / 35);
+            alphaMaskEffect.Projection = projectionMatrix;
+            alphaMaskEffect.View = viewMatrix;
+            alphaMaskEffect.World = worldMatrix;
 
             graphicsDevice.RasterizerState = new RasterizerState
             {
@@ -179,8 +190,12 @@ namespace ManagedDoom.HardwareRendering
             for (var index = 0; index < meshesAmount; index++)
             {
                 var mesh = meshes[index];
+
                 basicEffect.Alpha = mesh.Alpha;
                 basicEffect.Texture = mesh.Texture2D;
+                basicEffect.Projection = projectionMatrix;
+                basicEffect.View = mesh.View ?? viewMatrix;
+                basicEffect.World = mesh.World ?? worldMatrix;
 
                 foreach (var pass in basicEffect.CurrentTechnique.Passes)
                 {
@@ -193,6 +208,27 @@ namespace ManagedDoom.HardwareRendering
                     );
                 }
             }
+
+            var spriteBatch = new SpriteBatch(graphicsDevice);
+            spriteBatch.Begin();
+
+            for (var index = 0; index < spritesAmount; index++)
+            {
+                var sprite = sprites[index];
+                spriteBatch.Draw(
+                    sprite.Texture2D,
+                    sprite.Position,
+                    null,
+                    Color.White,
+                    0,
+                    Vector2.Zero,
+                    sprite.Scale,
+                    SpriteEffects.None,
+                    1
+                );
+            }
+
+            spriteBatch.End();
         }
 
         public void DrawSprite(ThreeDRenderer.VisSprite sprite)
@@ -218,15 +254,12 @@ namespace ManagedDoom.HardwareRendering
             var tex1 = 0;
             var tex2 = 1;
 
-            var sector = thing.Subsector.Sector;
-            var brightness = SectorBrightness(sector.LightLevel);
-            var color = new Color(brightness, brightness, brightness);
+            var color = SectorBrightnessColor(thing.Subsector.Sector);
 
-            ref var mesh = ref DrawRectangle(
-                new(new(box1.X, topZ, box1.Y), color, new(tex1, 0)),
-                new(new(box2.X, topZ, box2.Y), color, new(tex2, 0)),
-                new(new(box1.X, bottomZ, box1.Y), color, new(tex1, 1)),
-                new(new(box2.X, bottomZ, box2.Y), color, new(tex2, 1))
+            ref var mesh = ref DrawVerticalRectangle(
+                new(new(box1.X, topZ, box1.Y), new(tex1, 0)),
+                new(new(box2.X, bottomZ, box2.Y), new(tex2, 1)),
+                color
             );
 
             mesh.Texture2D = sprite.Patch.Texture2D;
@@ -276,7 +309,7 @@ namespace ManagedDoom.HardwareRendering
             var v1 = seg.Vertex1.ToGlVector2();
             var v2 = seg.Vertex2.ToGlVector2();
 
-            var wallTexture = commonResource
+            var wallTexture = resource
                 .Textures[threeDRenderer.World.Specials.TextureTranslation[texture]]
                 .Composite;
 
@@ -298,15 +331,12 @@ namespace ManagedDoom.HardwareRendering
                 yOffset += frontCeiling - backFloor;
             }
 
-            var sector = seg.SideDef.Sector;
-            var brightness = SectorBrightness(sector.LightLevel);
-            var color = new Color(brightness, brightness, brightness);
+            var color = SectorBrightnessColor(seg.SideDef.Sector);
 
-            ref var mesh = ref DrawRectangle(
-                new(new(v1.X, ceiling, v1.Y), color, new(xOffset / texWidth, yOffset / texHeight)),
-                new(new(v2.X, ceiling, v2.Y), color, new((xOffset + width) / texWidth, yOffset / texHeight)),
-                new(new(v1.X, floor, v1.Y), color, new(xOffset / texWidth, (yOffset + height) / texHeight)),
-                new(new(v2.X, floor, v2.Y), color, new((xOffset + width) / texWidth, (yOffset + height) / texHeight))
+            ref var mesh = ref DrawVerticalRectangle(
+                new(new(v1.X, ceiling, v1.Y), new(xOffset / texWidth, yOffset / texHeight)),
+                new(new(v2.X, floor, v2.Y), new((xOffset + width) / texWidth, (yOffset + height) / texHeight)),
+                color
             );
 
             mesh.Texture2D = wallTexture.Texture2D;
@@ -319,7 +349,7 @@ namespace ManagedDoom.HardwareRendering
                 return;
             }
 
-            var wallTexture = commonResource
+            var wallTexture = resource
                 .Textures[threeDRenderer.World.Specials.TextureTranslation[seg.SideDef.MiddleTexture]]
                 .Composite;
 
@@ -351,14 +381,13 @@ namespace ManagedDoom.HardwareRendering
                 zBottom = floor + yOffset;
             }
 
-            var sector = seg.SideDef.Sector;
-            var brightness = SectorBrightness(sector.LightLevel);
-            var color = new Color(brightness, brightness, brightness, seg.LineDef.Action == 208 ? seg.LineDef.ActionArgs[1] : 255);
-            ref var mesh = ref DrawRectangle(
-                new(new(v1.X, zTop, v1.Y), color, new(xOffset / texWidth, 0)),
-                new(new(v2.X, zTop, v2.Y), color, new((xOffset + width) / texWidth, 0)),
-                new(new(v1.X, zBottom, v1.Y), color, new(xOffset / texWidth, 1)),
-                new(new(v2.X, zBottom, v2.Y), color, new((xOffset + width) / texWidth, 1))
+            var color = SectorBrightnessColor(seg.SideDef.Sector);
+            color.A = seg.LineDef.Action == 208 ? seg.LineDef.ActionArgs[1] : 255;
+
+            ref var mesh = ref DrawVerticalRectangle(
+                new(new(v1.X, zTop, v1.Y), new(xOffset / texWidth, 0)),
+                new(new(v2.X, zBottom, v2.Y), new((xOffset + width) / texWidth, 1)),
+                color
             );
 
             mesh.Texture2D = wallTexture.Texture2D;
@@ -379,7 +408,7 @@ namespace ManagedDoom.HardwareRendering
             var ceiling = seg.FrontSector.CeilingHeight.ToFloat();
             var floor = seg.FrontSector.FloorHeight.ToFloat();
 
-            var wallTexture = commonResource
+            var wallTexture = resource
                 .Textures[threeDRenderer.World.Specials.TextureTranslation[texture]]
                 .Composite;
 
@@ -395,37 +424,43 @@ namespace ManagedDoom.HardwareRendering
             {
                 yOffset -= ceiling % texHeight;
             }
-            
-            var sector = seg.SideDef.Sector;
-            var brightness = SectorBrightness(sector.LightLevel);
-            var color = new Color(brightness, brightness, brightness);
 
-            ref var mesh = ref DrawRectangle(
-                new(new(v1.X, ceiling, v1.Y), color, new(xOffset / texWidth, yOffset / texHeight)),
-                new(new(v2.X, ceiling, v2.Y), color, new((xOffset + width) / texWidth, yOffset / texHeight)),
-                new(new(v1.X, floor, v1.Y), color, new(xOffset / texWidth, (yOffset + height) / texHeight)),
-                new(new(v2.X, floor, v2.Y), color, new((xOffset + width) / texWidth, (yOffset + height) / texHeight))
+            var color = SectorBrightnessColor(seg.SideDef.Sector);
+
+            ref var mesh = ref DrawVerticalRectangle(
+                new(new(v1.X, ceiling, v1.Y), new(xOffset / texWidth, yOffset / texHeight)),
+                new(new(v2.X, floor, v2.Y), new((xOffset + width) / texWidth, (yOffset + height) / texHeight)),
+                color
             );
 
             mesh.Texture2D = wallTexture.Texture2D;
         }
 
-        private ref RenderMesh DrawRectangle(
-            VertexPositionColorTexture topLeft,
-            VertexPositionColorTexture topRight,
-            VertexPositionColorTexture bottomLeft,
-            VertexPositionColorTexture bottomRight
+        private ref RenderMesh DrawVerticalRectangle(
+            VertexPositionTexture v1,
+            VertexPositionTexture v2,
+            Color color
         )
         {
-            triangleVertices[vertexesAmount + 0] = topLeft;
-            triangleVertices[vertexesAmount + 1] = topRight;
-            triangleVertices[vertexesAmount + 2] = bottomLeft;
-            triangleVertices[vertexesAmount + 3] = bottomRight;
+            triangleVertices[vertexesAmount + 0].Color = color;
+            triangleVertices[vertexesAmount + 1].Color = color;
+            triangleVertices[vertexesAmount + 2].Color = color;
+            triangleVertices[vertexesAmount + 3].Color = color;
+
+            triangleVertices[vertexesAmount + 0].TextureCoordinate = v1.TextureCoordinate;
+            triangleVertices[vertexesAmount + 1].TextureCoordinate = new(v2.TextureCoordinate.X, v1.TextureCoordinate.Y);
+            triangleVertices[vertexesAmount + 2].TextureCoordinate = v2.TextureCoordinate;
+            triangleVertices[vertexesAmount + 3].TextureCoordinate = new(v1.TextureCoordinate.X, v2.TextureCoordinate.Y);
+
+            triangleVertices[vertexesAmount + 0].Position = v1.Position;
+            triangleVertices[vertexesAmount + 1].Position = new(v2.Position.X, v1.Position.Y, v2.Position.Z);
+            triangleVertices[vertexesAmount + 2].Position = v2.Position;
+            triangleVertices[vertexesAmount + 3].Position = new(v1.Position.X, v2.Position.Y, v1.Position.Z);
 
             triangleIndices[indicesAmount + 0] = vertexesAmount + 0;
             triangleIndices[indicesAmount + 1] = vertexesAmount + 1;
             triangleIndices[indicesAmount + 2] = vertexesAmount + 2;
-            triangleIndices[indicesAmount + 3] = vertexesAmount + 1;
+            triangleIndices[indicesAmount + 3] = vertexesAmount + 0;
             triangleIndices[indicesAmount + 4] = vertexesAmount + 2;
             triangleIndices[indicesAmount + 5] = vertexesAmount + 3;
 
@@ -463,20 +498,19 @@ namespace ManagedDoom.HardwareRendering
             var sector = subsector.Sector;
             var flatIndex = floor ? sector.FloorFlat : sector.CeilingFlat;
 
-            if (flatIndex == commonResource.Flats.SkyFlatNumber)
+            if (flatIndex == resource.Flats.SkyFlatNumber)
             {
                 return;
             }
 
-            var flat = commonResource.Flats[flatIndex];
+            var flat = resource.Flats[flatIndex];
 
             var texture2D = flat.Texture2D;
             var points = subsector.Points;
             var z = floor ? sector.FloorHeight.ToFloat() : sector.CeilingHeight.ToFloat();
 
             var xOffset = sector.Tag != 1 ? 0 : (Frame % 64 / 35f * 512);
-            var brightness = SectorBrightness(sector.LightLevel);
-            var color = new Color(brightness, brightness, brightness);
+            var color = SectorBrightnessColor(sector);
 
             for (var i = 0; i < points.Length; i++)
             {
@@ -519,9 +553,43 @@ namespace ManagedDoom.HardwareRendering
             indicesAmount += indices;
         }
 
-        private float SectorBrightness(int sectorLightLevel)
+        public void DrawPlayerSprite(PlayerSpriteDef psp, byte[][] spriteLights, bool fuzz)
         {
-            return MathF.Pow(sectorLightLevel / 255f, 2);
+            var sprite = resource.Sprites[psp.State.Sprite];
+            var frame = sprite.Frames[psp.State.Frame & 0x7fff];
+
+            var patch = frame.Patches[0];
+            var flip = frame.Flip[0];
+
+            const int scale = 4;
+            var v = new Vector2(psp.Sx.ToFloat() - patch.LeftOffset, psp.Sy.ToFloat() - patch.TopOffset);
+            var texture2D = patch.Texture2D;
+
+            sprites[spritesAmount] = new()
+            {
+                Position = v * 4,
+                Texture2D = texture2D,
+                Scale = scale
+            };
+
+            spritesAmount += 1;
+        }
+
+        private Color SectorBrightnessColor(Sector sector)
+        {
+            var b = MathF.Pow(sector.LightLevel / 255f, 2);
+            return new(b, b, b);
+        }
+
+        public void RenderHud(Player player, bool drawBackground)
+        {
+            monoHudRenderer.RenderHud(player, drawBackground);
+        }
+
+        public void AddSprite(RenderSprite sprite)
+        {
+            sprites[spritesAmount] = sprite;
+            spritesAmount += 1;
         }
     }
 }

@@ -36,13 +36,13 @@ namespace ManagedDoom.SoftwareRendering
         private int screenHeight;
         private byte[] screenData;
         private int drawScale;
-        private MonoRenderer monoRenderer;
+        private Mono3DRenderer mono3DRenderer;
 
         private int windowSize;
 
         public ThreeDRenderer(GraphicsDeviceManager graphicsDeviceManager, CommonResource resource, DrawScreen screen, int windowSize)
         {
-            monoRenderer = new MonoRenderer(graphicsDeviceManager, this, resource);
+            mono3DRenderer = new Mono3DRenderer(graphicsDeviceManager, this, resource);
 
             colorMap = resource.ColorMap;
             textures = resource.Textures;
@@ -66,7 +66,7 @@ namespace ManagedDoom.SoftwareRendering
             InitWeaponRendering();
             InitFuzzEffect();
             InitColorTranslation();
-            InitWindowBorder(resource.Wad);
+            InitWindowBorder(resource);
 
             SetWindowSize(windowSize);
         }
@@ -619,16 +619,19 @@ namespace ManagedDoom.SoftwareRendering
         private Patch borderRight;
         private Flat backFlat;
 
-        private void InitWindowBorder(Wad wad)
+        private void InitWindowBorder(CommonResource resource)
         {
-            borderTopLeft = Patch.FromWad(wad, "BRDR_TL");
-            borderTopRight = Patch.FromWad(wad, "BRDR_TR");
-            borderBottomLeft = Patch.FromWad(wad, "BRDR_BL");
-            borderBottomRight = Patch.FromWad(wad, "BRDR_BR");
-            borderTop = Patch.FromWad(wad, "BRDR_T");
-            borderBottom = Patch.FromWad(wad, "BRDR_B");
-            borderLeft = Patch.FromWad(wad, "BRDR_L");
-            borderRight = Patch.FromWad(wad, "BRDR_R");
+            var wad = resource.Wad;
+            var pal = resource.Palette;
+
+            borderTopLeft = Patch.FromWad(wad, "BRDR_TL", pal);
+            borderTopRight = Patch.FromWad(wad, "BRDR_TR", pal);
+            borderBottomLeft = Patch.FromWad(wad, "BRDR_BL", pal);
+            borderBottomRight = Patch.FromWad(wad, "BRDR_BR", pal);
+            borderTop = Patch.FromWad(wad, "BRDR_T", pal);
+            borderBottom = Patch.FromWad(wad, "BRDR_B", pal);
+            borderLeft = Patch.FromWad(wad, "BRDR_L", pal);
+            borderRight = Patch.FromWad(wad, "BRDR_R", pal);
 
             if (wad.GameMode == GameMode.Commercial)
             {
@@ -713,13 +716,13 @@ namespace ManagedDoom.SoftwareRendering
 
         public void RenderMono()
         {
-            monoRenderer.Render();
+            mono3DRenderer.Render();
         }
 
         public void Render(Player player)
         {
             World = player.Mobj.World;
-            monoRenderer.SetProjection(player);
+            mono3DRenderer.SetProjection(player);
 
             viewX = player.Mobj.X;
             viewY = player.Mobj.Y;
@@ -748,6 +751,8 @@ namespace ManagedDoom.SoftwareRendering
             {
                 FillBackScreen();
             }
+            
+            RenderHud(player, false);
         }
 
 
@@ -793,7 +798,7 @@ namespace ManagedDoom.SoftwareRendering
         {
             var target = World.Map.Subsectors[subsector];
 
-            monoRenderer.DrawSubsector(target);
+            mono3DRenderer.DrawSubsector(target);
             AddSprites(target.Sector, validCount);
 
             for (var i = 0; i < target.SegCount; i++)
@@ -1039,7 +1044,7 @@ namespace ManagedDoom.SoftwareRendering
 
         private void DrawSolidWall(Seg seg, Angle rwAngle1, int x1, int x2)
         {
-            monoRenderer.DrawSolidWall(seg);
+            mono3DRenderer.DrawSolidWall(seg);
             
             int next;
             int start;
@@ -1129,7 +1134,7 @@ namespace ManagedDoom.SoftwareRendering
 
         private void DrawPassWall(Seg seg, Angle rwAngle1, int x1, int x2)
         {
-            monoRenderer.DrawPassWall(seg);
+            mono3DRenderer.DrawPassWall(seg);
             int start;
 
             // Find the first range that touches the range
@@ -2613,7 +2618,7 @@ namespace ManagedDoom.SoftwareRendering
 
             for (var i = visSpriteCount - 1; i >= 0; i--)
             {
-                monoRenderer.DrawSprite(visSprites[i]);
+                mono3DRenderer.DrawSprite(visSprites[i]);
                 DrawSprite(visSprites[i]);
             }
         }
@@ -2958,6 +2963,7 @@ namespace ManagedDoom.SoftwareRendering
                 var psp = player.PlayerSprites[i];
                 if (psp.State != null)
                 {
+                    mono3DRenderer.DrawPlayerSprite(psp, spriteLights, fuzz);
                     DrawPlayerSprite(psp, spriteLights, fuzz);
                 }
             }
@@ -3059,6 +3065,11 @@ namespace ManagedDoom.SoftwareRendering
             {
                 return y.Scale.Data - x.Scale.Data;
             }
+        }
+
+        public void RenderHud(Player player, bool drawBackground)
+        {
+            mono3DRenderer.RenderHud(player, drawBackground);
         }
     }
 }

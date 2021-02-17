@@ -105,7 +105,7 @@ namespace ManagedDoom.SoftwareRendering
 
         private Patch[] markNumbers;
 
-        public AutoMapRenderer(Wad wad, DrawScreen screen)
+        public AutoMapRenderer(CommonResource resource, DrawScreen screen)
         {
             this.screen = screen;
 
@@ -117,7 +117,7 @@ namespace ManagedDoom.SoftwareRendering
             markNumbers = new Patch[10];
             for (var i = 0; i < markNumbers.Length; i++)
             {
-                markNumbers[i] = Patch.FromWad(wad, "AMMNUM" + i);
+                markNumbers[i] = Patch.FromWad(resource.Wad, "AMMNUM" + i, resource.Palette);
             }
         }
 
