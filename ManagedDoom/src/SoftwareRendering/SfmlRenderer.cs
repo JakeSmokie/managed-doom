@@ -14,7 +14,6 @@
 //
 
 
-
 using System;
 using System.Runtime.ExceptionServices;
 using System.Runtime.InteropServices;
@@ -210,7 +209,7 @@ namespace ManagedDoom.SoftwareRendering
                     }
                 }
 
-                if (config.video_displaymessage || ReferenceEquals(consolePlayer.Message, (string)DoomInfo.Strings.MSGOFF))
+                if (config.video_displaymessage || ReferenceEquals(consolePlayer.Message, (string) DoomInfo.Strings.MSGOFF))
                 {
                     if (consolePlayer.MessageTime > 0)
                     {
@@ -236,7 +235,7 @@ namespace ManagedDoom.SoftwareRendering
             {
                 screenData[i] = 247;
             }
-            
+
             RenderApplication(app);
             RenderMenu(app);
 
@@ -272,10 +271,10 @@ namespace ManagedDoom.SoftwareRendering
                 var x2 = x1 + wipeBandWidth;
                 var y1 = Math.Max(scale * wipe.Y[i], 0);
                 var y2 = Math.Max(scale * wipe.Y[i + 1], 0);
-                var dy = (float)(y2 - y1) / wipeBandWidth;
+                var dy = (float) (y2 - y1) / wipeBandWidth;
                 for (var x = x1; x < x2; x++)
                 {
-                    var y = (int)MathF.Round(y1 + dy * ((x - x1) / 2 * 2));
+                    var y = (int) MathF.Round(y1 + dy * ((x - x1) / 2 * 2));
                     var copyLength = screen.Height - y;
                     if (copyLength > 0)
                     {
@@ -301,7 +300,7 @@ namespace ManagedDoom.SoftwareRendering
             if (false)
             {
                 var screenData = screen.Data;
-                
+
                 for (var x = 0; x < screen.Width; x++)
                 {
                     for (var y = 0; y < screen.Height; y++)
@@ -310,13 +309,13 @@ namespace ManagedDoom.SoftwareRendering
                         textureData[y * screen.Width + x].PackedValue = doomColor == 247 ? 0 : colors[doomColor];
                     }
                 }
-                
+
                 var texture2D = new Texture2D(graphics.GraphicsDevice, screen.Width, screen.Height);
                 texture2D.SetData(textureData);
-                
+
                 var resolution = graphics.GraphicsDevice.PresentationParameters;
                 var scale = new Vector2((float) resolution.BackBufferWidth / screen.Width, (float) resolution.BackBufferHeight / screen.Height);
-                
+
                 var spriteBatch = new SpriteBatch(graphics.GraphicsDevice);
                 spriteBatch.GraphicsDevice.BlendState = BlendState.NonPremultiplied;
                 spriteBatch.Begin();
@@ -332,10 +331,10 @@ namespace ManagedDoom.SoftwareRendering
         {
             var count = player.DamageCount;
 
-            if (player.Powers[(int)PowerType.Strength] != 0)
+            if (player.Powers[(int) PowerType.Strength] != 0)
             {
                 // Slowly fade the berzerk out.
-                var bzc = 12 - (player.Powers[(int)PowerType.Strength] >> 6);
+                var bzc = 12 - (player.Powers[(int) PowerType.Strength] >> 6);
                 if (bzc > count)
                 {
                     count = bzc;
@@ -366,8 +365,8 @@ namespace ManagedDoom.SoftwareRendering
 
                 palette += Palette.BonusStart;
             }
-            else if (player.Powers[(int)PowerType.IronFeet] > 4 * 32 ||
-                (player.Powers[(int)PowerType.IronFeet] & 8) != 0)
+            else if (player.Powers[(int) PowerType.IronFeet] > 4 * 32 ||
+                (player.Powers[(int) PowerType.IronFeet] & 8) != 0)
             {
                 palette = Palette.IronFeet;
             }
@@ -389,18 +388,12 @@ namespace ManagedDoom.SoftwareRendering
 
         public int MaxWindowSize
         {
-            get
-            {
-                return ThreeDRenderer.MaxScreenSize;
-            }
+            get { return ThreeDRenderer.MaxScreenSize; }
         }
 
         public int WindowSize
         {
-            get
-            {
-                return threeD.WindowSize;
-            }
+            get { return threeD.WindowSize; }
 
             set
             {
@@ -411,31 +404,19 @@ namespace ManagedDoom.SoftwareRendering
 
         public bool DisplayMessage
         {
-            get
-            {
-                return config.video_displaymessage;
-            }
+            get { return config.video_displaymessage; }
 
-            set
-            {
-                config.video_displaymessage = value;
-            }
+            set { config.video_displaymessage = value; }
         }
 
         public int MaxGammaCorrectionLevel
         {
-            get
-            {
-                return gammaCorrectionParameters.Length - 1;
-            }
+            get { return gammaCorrectionParameters.Length - 1; }
         }
 
         public int GammaCorrectionLevel
         {
-            get
-            {
-                return config.video_gammacorrection;
-            }
+            get { return config.video_gammacorrection; }
 
             set
             {

@@ -726,6 +726,7 @@ namespace ManagedDoom
                             mobj.SpawnPoint = new MapThing(
                                 Fixed.FromInt(BitConverter.ToInt16(data, ptr + 140)),
                                 Fixed.FromInt(BitConverter.ToInt16(data, ptr + 142)),
+                                Fixed.Zero,
                                 new Angle(Angle.Ang45.Data * (uint)(BitConverter.ToInt16(data, ptr + 144) / 45)),
                                 BitConverter.ToInt16(data, ptr + 146),
                                 (ThingFlags)BitConverter.ToInt16(data, ptr + 148));

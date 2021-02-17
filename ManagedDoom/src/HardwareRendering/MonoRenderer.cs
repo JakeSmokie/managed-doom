@@ -1,10 +1,8 @@
 ﻿using System;
 using System.IO;
-using System.Linq;
 using ManagedDoom.SoftwareRendering;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
-using Microsoft.Xna.Framework.Input;
 
 namespace ManagedDoom.HardwareRendering
 {
@@ -38,7 +36,7 @@ namespace ManagedDoom.HardwareRendering
         private IndexBuffer indexBuffer;
         private Player player;
 
-        private readonly VertexPositionTexture[] triangleVertices = new VertexPositionTexture[40000];
+        private readonly VertexPositionColorTexture[] triangleVertices = new VertexPositionColorTexture[40000];
         private readonly int[] triangleIndices = new int[60000];
         private readonly RenderMesh[] meshes = new RenderMesh[60000];
 
@@ -78,15 +76,15 @@ namespace ManagedDoom.HardwareRendering
             graphicsDevice = graphicsDeviceManager.GraphicsDevice;
             projectionMatrix = Matrix.CreatePerspectiveFieldOfView(MathHelper.ToRadians(65f), graphicsDevice.Viewport.AspectRatio, 1f, 10000f);
 
-            vertexBuffer = new VertexBuffer(graphicsDevice, typeof(VertexPositionTexture), triangleVertices.Length, BufferUsage.WriteOnly);
+            vertexBuffer = new VertexBuffer(graphicsDevice, typeof(VertexPositionColorTexture), triangleVertices.Length, BufferUsage.WriteOnly);
             indexBuffer = new IndexBuffer(graphicsDevice, IndexElementSize.ThirtyTwoBits, triangleIndices.Length, BufferUsage.WriteOnly);
 
             basicEffect = new BasicEffect(graphicsDevice)
             {
                 Alpha = 1,
-                VertexColorEnabled = false,
+                VertexColorEnabled = true,
                 LightingEnabled = false,
-                TextureEnabled = true
+                TextureEnabled = true,
             };
 
             alphaMaskEffect = new AlphaTestEffect(graphicsDevice)
@@ -128,6 +126,7 @@ namespace ManagedDoom.HardwareRendering
 
         public void Render()
         {
+            graphicsDevice.Clear(Color.Aqua);
             Frame++;
 
             var random = new Random(Frame / 35);
@@ -136,7 +135,9 @@ namespace ManagedDoom.HardwareRendering
             {
                 CullMode = CullMode.None,
                 FillMode = FillMode.Solid,
-                MultiSampleAntiAlias = true
+                DepthClipEnable = false,
+                // MultiSampleAntiAlias = true,
+                // DepthBias = (float)(-0.0004f / (1 / Math.Pow(2, 24)))
             };
 
             graphicsDevice.SamplerStates[0] = SamplerState.PointWrap;
@@ -149,7 +150,6 @@ namespace ManagedDoom.HardwareRendering
             graphicsDevice.SetVertexBuffer(vertexBuffer);
             graphicsDevice.Indices = indexBuffer;
 
-            graphicsDevice.Clear(Color.Aqua);
 
             if (false)
             {
@@ -218,11 +218,15 @@ namespace ManagedDoom.HardwareRendering
             var tex1 = 0;
             var tex2 = 1;
 
+            var sector = thing.Subsector.Sector;
+            var brightness = SectorBrightness(sector.LightLevel);
+            var color = new Color(brightness, brightness, brightness);
+
             ref var mesh = ref DrawRectangle(
-                new(new(box1.X, topZ, box1.Y), new(tex1, 0)),
-                new(new(box2.X, topZ, box2.Y), new(tex2, 0)),
-                new(new(box1.X, bottomZ, box1.Y), new(tex1, 1)),
-                new(new(box2.X, bottomZ, box2.Y), new(tex2, 1))
+                new(new(box1.X, topZ, box1.Y), color, new(tex1, 0)),
+                new(new(box2.X, topZ, box2.Y), color, new(tex2, 0)),
+                new(new(box1.X, bottomZ, box1.Y), color, new(tex1, 1)),
+                new(new(box2.X, bottomZ, box2.Y), color, new(tex2, 1))
             );
 
             mesh.Texture2D = sprite.Patch.Texture2D;
@@ -244,7 +248,7 @@ namespace ManagedDoom.HardwareRendering
 
         public void DrawPassWall(Seg seg)
         {
-            DrawMaskedRange(seg);
+            DrawMasked(seg);
 
             DrawSolidWallTopOrBottom(true, seg);
             DrawSolidWallTopOrBottom(false, seg);
@@ -294,17 +298,21 @@ namespace ManagedDoom.HardwareRendering
                 yOffset += frontCeiling - backFloor;
             }
 
+            var sector = seg.SideDef.Sector;
+            var brightness = SectorBrightness(sector.LightLevel);
+            var color = new Color(brightness, brightness, brightness);
+
             ref var mesh = ref DrawRectangle(
-                new(new(v1.X, ceiling, v1.Y), new(xOffset / texWidth, yOffset / texHeight)),
-                new(new(v2.X, ceiling, v2.Y), new((xOffset + width) / texWidth, yOffset / texHeight)),
-                new(new(v1.X, floor, v1.Y), new(xOffset / texWidth, (yOffset + height) / texHeight)),
-                new(new(v2.X, floor, v2.Y), new((xOffset + width) / texWidth, (yOffset + height) / texHeight))
+                new(new(v1.X, ceiling, v1.Y), color, new(xOffset / texWidth, yOffset / texHeight)),
+                new(new(v2.X, ceiling, v2.Y), color, new((xOffset + width) / texWidth, yOffset / texHeight)),
+                new(new(v1.X, floor, v1.Y), color, new(xOffset / texWidth, (yOffset + height) / texHeight)),
+                new(new(v2.X, floor, v2.Y), color, new((xOffset + width) / texWidth, (yOffset + height) / texHeight))
             );
 
             mesh.Texture2D = wallTexture.Texture2D;
         }
 
-        private void DrawMaskedRange(Seg seg)
+        private void DrawMasked(Seg seg)
         {
             if (seg.SideDef.MiddleTexture <= 0)
             {
@@ -343,15 +351,17 @@ namespace ManagedDoom.HardwareRendering
                 zBottom = floor + yOffset;
             }
 
+            var sector = seg.SideDef.Sector;
+            var brightness = SectorBrightness(sector.LightLevel);
+            var color = new Color(brightness, brightness, brightness, seg.LineDef.Action == 208 ? seg.LineDef.ActionArgs[1] : 255);
             ref var mesh = ref DrawRectangle(
-                new(new(v1.X, zTop, v1.Y), new(xOffset / texWidth, 0)),
-                new(new(v2.X, zTop, v2.Y), new((xOffset + width) / texWidth, 0)),
-                new(new(v1.X, zBottom, v1.Y), new(xOffset / texWidth, 1)),
-                new(new(v2.X, zBottom, v2.Y), new((xOffset + width) / texWidth, 1))
+                new(new(v1.X, zTop, v1.Y), color, new(xOffset / texWidth, 0)),
+                new(new(v2.X, zTop, v2.Y), color, new((xOffset + width) / texWidth, 0)),
+                new(new(v1.X, zBottom, v1.Y), color, new(xOffset / texWidth, 1)),
+                new(new(v2.X, zBottom, v2.Y), color, new((xOffset + width) / texWidth, 1))
             );
 
             mesh.Texture2D = wallTexture.Texture2D;
-            mesh.Alpha = seg.LineDef.Action == 208 ? seg.LineDef.ActionArgs[1] / 255f : 1;
         }
 
         private void DrawMiddleSolidWall(Seg seg)
@@ -385,22 +395,26 @@ namespace ManagedDoom.HardwareRendering
             {
                 yOffset -= ceiling % texHeight;
             }
+            
+            var sector = seg.SideDef.Sector;
+            var brightness = SectorBrightness(sector.LightLevel);
+            var color = new Color(brightness, brightness, brightness);
 
             ref var mesh = ref DrawRectangle(
-                new(new(v1.X, ceiling, v1.Y), new(xOffset / texWidth, yOffset / texHeight)),
-                new(new(v2.X, ceiling, v2.Y), new((xOffset + width) / texWidth, yOffset / texHeight)),
-                new(new(v1.X, floor, v1.Y), new(xOffset / texWidth, (yOffset + height) / texHeight)),
-                new(new(v2.X, floor, v2.Y), new((xOffset + width) / texWidth, (yOffset + height) / texHeight))
+                new(new(v1.X, ceiling, v1.Y), color, new(xOffset / texWidth, yOffset / texHeight)),
+                new(new(v2.X, ceiling, v2.Y), color, new((xOffset + width) / texWidth, yOffset / texHeight)),
+                new(new(v1.X, floor, v1.Y), color, new(xOffset / texWidth, (yOffset + height) / texHeight)),
+                new(new(v2.X, floor, v2.Y), color, new((xOffset + width) / texWidth, (yOffset + height) / texHeight))
             );
 
             mesh.Texture2D = wallTexture.Texture2D;
         }
 
         private ref RenderMesh DrawRectangle(
-            VertexPositionTexture topLeft,
-            VertexPositionTexture topRight,
-            VertexPositionTexture bottomLeft,
-            VertexPositionTexture bottomRight
+            VertexPositionColorTexture topLeft,
+            VertexPositionColorTexture topRight,
+            VertexPositionColorTexture bottomLeft,
+            VertexPositionColorTexture bottomRight
         )
         {
             triangleVertices[vertexesAmount + 0] = topLeft;
@@ -460,12 +474,17 @@ namespace ManagedDoom.HardwareRendering
             var points = subsector.Points;
             var z = floor ? sector.FloorHeight.ToFloat() : sector.CeilingHeight.ToFloat();
 
+            var xOffset = sector.Tag != 1 ? 0 : (Frame % 64 / 35f * 512);
+            var brightness = SectorBrightness(sector.LightLevel);
+            var color = new Color(brightness, brightness, brightness);
+
             for (var i = 0; i < points.Length; i++)
             {
                 var point = points[i];
 
+                triangleVertices[vertexesAmount + i].Color = color;
                 triangleVertices[vertexesAmount + i].Position = new(-point.X, z, point.Y);
-                triangleVertices[vertexesAmount + i].TextureCoordinate = new(-point.X / texture2D.Width, point.Y / texture2D.Height);
+                triangleVertices[vertexesAmount + i].TextureCoordinate = new(-point.X / texture2D.Width + xOffset, point.Y / texture2D.Height);
             }
 
             var indices = 0;
@@ -498,6 +517,11 @@ namespace ManagedDoom.HardwareRendering
             meshesAmount += 1;
             vertexesAmount += points.Length;
             indicesAmount += indices;
+        }
+
+        private float SectorBrightness(int sectorLightLevel)
+        {
+            return MathF.Pow(sectorLightLevel / 255f, 2);
         }
     }
 }

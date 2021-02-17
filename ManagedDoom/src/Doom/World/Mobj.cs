@@ -171,6 +171,19 @@ namespace ManagedDoom
 
         public override void Run()
         {
+            if (world.Map.Name == "MAP02" && Subsector.Sector.Tag == 1)
+            {
+                if (Subsector.Sector.FloorHeight == Z)
+                {
+                    MomX += Fixed.FromFloat(-512 / 35f);
+
+                    if (Health > 0)
+                    {
+                        World.ThingInteraction.DamageMobj(this, null, null, 500);
+                    }
+                }
+            }
+            
             // Momentum movement.
             if (momX != Fixed.Zero || momY != Fixed.Zero ||
                 (flags & MobjFlags.SkullFly) != 0)

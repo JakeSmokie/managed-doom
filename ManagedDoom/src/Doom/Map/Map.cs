@@ -81,6 +81,7 @@ namespace ManagedDoom
                     name = "E" + options.Episode + "M" + options.Map;
                 }
 
+                Name = name;
                 Console.Write("Load map '" + name + "': ");
 
                 var map = wad.GetLumpNumber(name);
@@ -135,6 +136,8 @@ namespace ManagedDoom
             }
         }
 
+        public string Name { get; set; }
+
         private void RecursiveBuildSubsectorPoly(Stack<Split> splits, int nodeIndex)
         {
             var node = nodes[nodeIndex];
@@ -159,14 +162,16 @@ namespace ManagedDoom
             }
         }
 
-        private void BuildSubsectorPoly(Stack<Split> splits, int subsectorIndex)
+        private void BuildSubsectorPoly(IEnumerable<Split> splits, int subsectorIndex)
         {
+            const int maxCoordinate = 32767;
+            const int minCoordinate = -32768;
             var poly = new List<Vector2>(16)
             {
-                new(-32768, 32768),
-                new(32768, 32768),
-                new(32768, -32768),
-                new(-32768, -32768) // TODO: Replace with MaxCoordinate for each map format
+                new(minCoordinate, maxCoordinate),
+                new(maxCoordinate, maxCoordinate),
+                new(maxCoordinate, minCoordinate),
+                new(minCoordinate, minCoordinate) // TODO: Replace with MaxCoordinate for each map format
             };
 
             foreach (var s in splits)
@@ -224,14 +229,16 @@ namespace ManagedDoom
                 {
                     if (side1 > epsilon)
                     {
-                        GeometryHelper.LinesIntersect(
+                        GeometryHelper.GetLineIntersection(
                             split.Pos,
                             split.Pos + split.Delta,
                             prev,
                             cur,
-                            out var point
+                            out var u,
+                            false
                         );
 
+                        var point = prev + (cur - prev) * u;
                         newPoly.Add(point);
                     }
 
@@ -242,14 +249,16 @@ namespace ManagedDoom
                 {
                     if (side1 < -epsilon)
                     {
-                        GeometryHelper.LinesIntersect(
+                        GeometryHelper.GetLineIntersection(
                             split.Pos,
                             split.Pos + split.Delta,
                             prev,
                             cur,
-                            out var point
+                            out var u,
+                            false
                         );
 
+                        var point = prev + (cur - prev) * u;
                         newPoly.Add(point);
                     }
                 }

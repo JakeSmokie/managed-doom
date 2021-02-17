@@ -27,12 +27,14 @@ namespace ManagedDoom
         public static MapThing Empty = new MapThing(
             Fixed.Zero,
             Fixed.Zero,
+            Fixed.Zero,
             Angle.Ang0,
             0,
             0);
 
         private Fixed x;
         private Fixed y;
+        private Fixed z;
         private Angle angle;
         private int type;
         private ThingFlags flags;
@@ -40,12 +42,14 @@ namespace ManagedDoom
         public MapThing(
             Fixed x,
             Fixed y,
+            Fixed z,
             Angle angle,
             int type,
             ThingFlags flags)
         {
             this.x = x;
             this.y = y;
+            this.z = z;
             this.angle = angle;
             this.type = type;
             this.flags = flags;
@@ -62,6 +66,7 @@ namespace ManagedDoom
             return new MapThing(
                 Fixed.FromInt(x),
                 Fixed.FromInt(y),
+                Fixed.Zero,
                 new Angle(ManagedDoom.Angle.Ang45.Data * (uint)(angle / 45)),
                 type,
                 (ThingFlags)flags);
@@ -113,6 +118,7 @@ namespace ManagedDoom
         {
             var x = BitConverter.ToInt16(data.Slice(2));
             var y = BitConverter.ToInt16(data.Slice(4));
+            var z = BitConverter.ToInt16(data.Slice(6));
             var angle = BitConverter.ToInt16(data.Slice(8));
             var type = BitConverter.ToInt16(data.Slice(10));
             var flags = BitConverter.ToInt16(data.Slice(12));
@@ -120,6 +126,7 @@ namespace ManagedDoom
             return new MapThing(
                 Fixed.FromInt(x),
                 Fixed.FromInt(y),
+                Fixed.FromInt(z),
                 new Angle(ManagedDoom.Angle.Ang45.Data * (uint)(angle / 45)),
                 type,
                 (ThingFlags)flags);
@@ -127,6 +134,7 @@ namespace ManagedDoom
 
         public Fixed X => x;
         public Fixed Y => y;
+        public Fixed Z => z;
         public Angle Angle => angle;
 
         public int Type

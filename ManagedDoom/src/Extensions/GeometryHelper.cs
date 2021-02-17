@@ -48,5 +48,35 @@ namespace ManagedDoom.Extensions
 
             return false;
         }
+        
+        public static bool GetLineIntersection(Vector2 v1, Vector2 v2, Vector2 v3, Vector2 v4, out float ray, bool bounded)
+        {
+            return GetLineIntersection(v1, v2, v3.X, v3.Y, v4.X, v4.Y, out ray, out _, bounded);
+        }
+
+        private static bool GetLineIntersection(Vector2 v1, Vector2 v2, float x3, float y3, float x4, float y4, out float ray, out float line, bool bounded)
+        {
+            // Calculate divider
+            var div = (y4 - y3) * (v2.X - v1.X) - (x4 - x3) * (v2.Y - v1.Y);
+
+            // Can this be tested?
+            if(div != 0.0f)
+            {
+                // Calculate the intersection distance from the line
+                line = ((x4 - x3) * (v1.Y - y3) - (y4 - y3) * (v1.X - x3)) / div;
+
+                // Calculate the intersection distance from the ray
+                ray = ((v2.X - v1.X) * (v1.Y - y3) - (v2.Y - v1.Y) * (v1.X - x3)) / div;
+
+                // Return if intersecting
+                if(bounded && (ray < 0.0f || ray > 1.0f || line < 0.0f || line > 1.0f)) return false; //mxd
+                return true;
+            }
+
+            // Unable to detect intersection
+            line = float.NaN;
+            ray = float.NaN;
+            return false;
+        }
     }
 }

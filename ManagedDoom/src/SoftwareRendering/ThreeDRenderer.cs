@@ -775,6 +775,11 @@ namespace ManagedDoom.SoftwareRendering
             // Recursively divide front space.
             RenderBspNode(bsp.Children[side]);
 
+            if (node == 1740)
+            {
+                ;
+            }
+            
             // Possibly divide back space.
             if (IsPotentiallyVisible(bsp.BoundingBox[side ^ 1]))
             {
@@ -880,7 +885,7 @@ namespace ManagedDoom.SoftwareRendering
                 // Totally off the left edge?
                 if (tSpan1 >= span)
                 {
-                    return false;
+                    // return false;
                 }
 
                 angle1 = clipAngle;
@@ -894,7 +899,7 @@ namespace ManagedDoom.SoftwareRendering
                 // Totally off the left edge?
                 if (tSpan2 >= span)
                 {
-                    return false;
+                    // return false;
                 }
 
                 angle2 = -clipAngle;

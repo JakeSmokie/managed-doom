@@ -14,7 +14,6 @@
 //
 
 
-
 using System;
 
 namespace ManagedDoom
@@ -31,7 +30,6 @@ namespace ManagedDoom
             InitSlideMovement();
             InitTeleportMovement();
         }
-
 
 
         ////////////////////////////////////////////////////////////
@@ -233,7 +231,7 @@ namespace ManagedDoom
                     return false;
                 }
             }
-            
+
             if ((line.Flags & LineFlags.BlockEverything) != 0)
             {
                 // Explicitly blocking everything.
@@ -325,7 +323,7 @@ namespace ManagedDoom
                 }
 
                 if (currentThing.Target != null &&
-                        (currentThing.Target.Type == thing.Type ||
+                    (currentThing.Target.Type == thing.Type ||
                         (currentThing.Target.Type == MobjType.Knight && thing.Type == MobjType.Bruiser) ||
                         (currentThing.Target.Type == MobjType.Bruiser && thing.Type == MobjType.Knight)))
                 {
@@ -366,6 +364,7 @@ namespace ManagedDoom
                     // Can remove thing.
                     world.ItemPickup.TouchSpecialThing(thing, currentThing);
                 }
+
                 return !solid;
             }
 
@@ -623,7 +622,8 @@ namespace ManagedDoom
                 {
                     // Blocked move.
                     if (thing.Player != null)
-                    {   // Try to slide along it.
+                    {
+                        // Try to slide along it.
                         SlideMove(thing);
                     }
                     else if ((thing.Flags & MobjFlags.Missile) != 0)
@@ -638,6 +638,7 @@ namespace ManagedDoom
                             world.ThingAllocation.RemoveMobj(thing);
                             return;
                         }
+
                         world.ThingInteraction.ExplodeMissile(thing);
                     }
                     else
@@ -645,8 +646,7 @@ namespace ManagedDoom
                         thing.MomX = thing.MomY = Fixed.Zero;
                     }
                 }
-            }
-            while (moveX != Fixed.Zero || moveY != Fixed.Zero);
+            } while (moveX != Fixed.Zero || moveY != Fixed.Zero);
 
             // Slow down.
             if (player != null && (player.Cheats & CheatFlags.NoMomentum) != 0)
@@ -690,7 +690,7 @@ namespace ManagedDoom
                 (player == null || (player.Cmd.ForwardMove == 0 && player.Cmd.SideMove == 0)))
             {
                 // If in a walking frame, stop moving.
-                if (player != null && (player.Mobj.State.Number - (int)MobjState.PlayRun1) < 4)
+                if (player != null && (player.Mobj.State.Number - (int) MobjState.PlayRun1) < 4)
                 {
                     player.Mobj.SetState(MobjState.Play);
                 }
@@ -767,8 +767,10 @@ namespace ManagedDoom
                         thing.Player.DeltaViewHeight = (thing.MomZ >> 3);
                         world.StartSound(thing, Sfx.OOF, SfxType.Voice);
                     }
+
                     thing.MomZ = Fixed.Zero;
                 }
+
                 thing.Z = thing.FloorZ;
 
                 if (!correctLostSoulBounce &&
@@ -828,7 +830,6 @@ namespace ManagedDoom
         public Fixed CurrentCeilingZ => currentCeilingZ;
         public Fixed CurrentDropoffZ => currentDropoffZ;
         public bool FloatOk => floatOk;
-
 
 
         ////////////////////////////////////////////////////////////
@@ -1076,7 +1077,6 @@ namespace ManagedDoom
                 TryMove(thing, thing.X + thing.MomX, thing.Y);
             }
         }
-
 
 
         ////////////////////////////////////////////////////////////
